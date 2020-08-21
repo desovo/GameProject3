@@ -48,11 +48,13 @@ inline void InitDefaults() {
 enum EObjectType {
   OT_NONE = 0,
   OT_PLAYER = 1,
-  OT_ROBOT = 2,
+  OT_NPC = 2,
   OT_MONSTER = 3,
   OT_PET = 4,
-  OT_PARTNER = 5,
-  OT_SUMMON = 6,
+  OT_MOUNT = 5,
+  OT_MACHINE = 6,
+  OT_PARTNER = 7,
+  OT_SUMMON = 8,
   EObjectType_INT_MIN_SENTINEL_DO_NOT_USE_ = ::google::protobuf::kint32min,
   EObjectType_INT_MAX_SENTINEL_DO_NOT_USE_ = ::google::protobuf::kint32max
 };
@@ -74,19 +76,27 @@ inline bool EObjectType_Parse(
 enum EActionType {
   AT_NONE = 0,
   AT_IDLE = 1,
-  AT_WALK = 2,
-  AT_RUN = 3,
-  AT_FLY = 4,
-  AT_DANCE1 = 5,
-  AT_DANCE2 = 6,
-  AT_DANCE3 = 7,
-  AT_DANCE4 = 8,
+  AT_FIXBODY = 2,
+  AT_WALK = 3,
+  AT_RUN = 4,
+  AT_FLY = 5,
+  AT_SKILL = 6,
+  AT_MINE = 7,
+  AT_ROLL = 8,
+  AT_JUMP = 9,
+  AT_BORN = 10,
+  AT_DANCE = 11,
+  AT_DEAD = 12,
+  AT_WOUND = 13,
+  AT_BEATBACK = 14,
+  AT_BEATDOWN = 15,
+  AT_BEATFLY = 16,
   EActionType_INT_MIN_SENTINEL_DO_NOT_USE_ = ::google::protobuf::kint32min,
   EActionType_INT_MAX_SENTINEL_DO_NOT_USE_ = ::google::protobuf::kint32max
 };
 bool EActionType_IsValid(int value);
 const EActionType EActionType_MIN = AT_NONE;
-const EActionType EActionType_MAX = AT_DANCE4;
+const EActionType EActionType_MAX = AT_BEATFLY;
 const int EActionType_ARRAYSIZE = EActionType_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* EActionType_descriptor();
@@ -177,29 +187,27 @@ inline bool EObjectStatus_Parse(
 }
 enum EItemType {
   EIT_NONE = 0,
-  EIT_EQUIP = 1,
-  EIT_ACTIONDRUG = 2,
-  EIT_MAT = 3,
-  EIT_BOX = 4,
-  EIT_KEY = 5,
-  EIT_CHIP = 6,
-  EIT_GEM = 7,
-  EIT_FASHION = 8,
-  EIT_MONEY = 9,
-  EIT_ACTION = 10,
-  EIT_EXP = 11,
-  EIT_RUNE = 12,
-  EIT_PETSOUL = 13,
-  EIT_TASK = 14,
+  EIT_MONEY = 1,
+  EIT_ACTION = 2,
+  EIT_ITEM = 3,
+  EIT_EQUIP = 4,
+  EIT_GEM = 5,
+  EIT_RELICS = 6,
+  EIT_MOUNT = 7,
+  EIT_PET = 8,
+  EIT_PARTNER = 9,
+  EIT_FASHION = 10,
+  EIT_BOX = 11,
+  EIT_ACTBOX = 12,
+  EIT_CHIP = 13,
+  EIT_RUNE = 14,
   EIT_DRUG = 15,
-  EIT_PET = 16,
-  EIT_PARTNER = 17,
   EItemType_INT_MIN_SENTINEL_DO_NOT_USE_ = ::google::protobuf::kint32min,
   EItemType_INT_MAX_SENTINEL_DO_NOT_USE_ = ::google::protobuf::kint32max
 };
 bool EItemType_IsValid(int value);
 const EItemType EItemType_MIN = EIT_NONE;
-const EItemType EItemType_MAX = EIT_PARTNER;
+const EItemType EItemType_MAX = EIT_DRUG;
 const int EItemType_ARRAYSIZE = EItemType_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* EItemType_descriptor();
@@ -436,6 +444,29 @@ inline bool ETaskStatus_Parse(
   return ::google::protobuf::internal::ParseNamedEnum<ETaskStatus>(
     ETaskStatus_descriptor(), name, value);
 }
+enum ECopyResult {
+  ECR_NONE = 0,
+  ECR_WIN = 1,
+  ECR_LOST = 2,
+  ECR_DRAW = 3,
+  ECopyResult_INT_MIN_SENTINEL_DO_NOT_USE_ = ::google::protobuf::kint32min,
+  ECopyResult_INT_MAX_SENTINEL_DO_NOT_USE_ = ::google::protobuf::kint32max
+};
+bool ECopyResult_IsValid(int value);
+const ECopyResult ECopyResult_MIN = ECR_NONE;
+const ECopyResult ECopyResult_MAX = ECR_DRAW;
+const int ECopyResult_ARRAYSIZE = ECopyResult_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* ECopyResult_descriptor();
+inline const ::std::string& ECopyResult_Name(ECopyResult value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    ECopyResult_descriptor(), value);
+}
+inline bool ECopyResult_Parse(
+    const ::std::string& name, ECopyResult* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<ECopyResult>(
+    ECopyResult_descriptor(), name, value);
+}
 // ===================================================================
 
 
@@ -532,6 +563,11 @@ template <> struct is_proto_enum< ::ETaskStatus> : ::google::protobuf::internal:
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::ETaskStatus>() {
   return ::ETaskStatus_descriptor();
+}
+template <> struct is_proto_enum< ::ECopyResult> : ::google::protobuf::internal::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::ECopyResult>() {
+  return ::ECopyResult_descriptor();
 }
 
 }  // namespace protobuf

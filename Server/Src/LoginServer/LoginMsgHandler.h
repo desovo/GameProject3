@@ -16,8 +16,9 @@ public:
 
 	BOOL DispatchPacket(NetPacket* pNetPacket);
 
-	//*********************消息处理定义开始******************************
+	BOOL OnCloseConnect(UINT32 dwConnID);
 public:
+	//*********************消息处理定义开始******************************
 	BOOL OnMsgCheckVersionReq(NetPacket* pPacket);
 	BOOL OnMsgAccountRegReq(NetPacket* pPacket);
 	BOOL OnMsgAccountLoginReq(NetPacket* pPacket);
@@ -28,10 +29,9 @@ public:
 	BOOL OnMsgAccountLoginAck(NetPacket* pPacket);
 
 	BOOL OnMsgLogicSvrRegReq(NetPacket* pPacket);
+	BOOL OnMsgLogicUpdateReq(NetPacket* pPacket);
 	BOOL OnMsgSelectServerAck(NetPacket* pPacket);
 
-	BOOL OnMsgSealAccountAck(NetPacket* pPacket);
-	BOOL OnMsgWebCommandReq(NetPacket* pNetPacket);
 	//*********************消息处理定义结束******************************
 
 public:

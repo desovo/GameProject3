@@ -20,7 +20,7 @@ CGlobalDataManager* CGlobalDataManager::GetInstancePtr()
 	return &_StaticMgr;
 }
 
-BOOL CGlobalDataManager::LoadGlobalData(CppMySQL3DB& tDBConnection)
+BOOL CGlobalDataManager::LoadData(CppMySQL3DB& tDBConnection)
 {
 	UINT64 dwMaxGuid = 0;
 	UINT32 dwMaxOnline = 0;
@@ -35,16 +35,18 @@ BOOL CGlobalDataManager::LoadGlobalData(CppMySQL3DB& tDBConnection)
 		dwMaxOnline = QueryResult.getIntField("maxonline");
 	}
 
-	if(dwMaxGuid == 0)
+	if(dwMaxGuid <= 0)
 	{
 		dwMaxGuid  =  CGameService::GetInstancePtr()->GetServerID();
 		dwMaxGuid = (dwMaxGuid << 48) + 1;
 	}
 	dwMaxGuid += 100;
 	m_pGlobalDataObject = DataPool::CreateObject<GlobalDataObject>(ESD_GLOBAL, FALSE);
+	m_pGlobalDataObject->Lock();
 	m_pGlobalDataObject->m_dwServerID = CGameService::GetInstancePtr()->GetServerID();
 	m_pGlobalDataObject->m_u64Guid	  = dwMaxGuid;
 	m_pGlobalDataObject->m_dwMaxOnline = dwMaxOnline;
+	m_pGlobalDataObject->Unlock();
 
 	return TRUE;
 }
@@ -58,7 +60,24 @@ UINT64 CGlobalDataManager::MakeNewGuid()
 	return m_pGlobalDataObject->m_u64Guid;
 }
 
+VOID CGlobalDataManager::SetMaxOnline(INT32 nNum)
+{
+	m_pGlobalDataObject->Lock();
+	m_pGlobalDataObject->m_dwMaxOnline = nNum;
+	m_pGlobalDataObject->Unlock();
+}
+
 UINT32 CGlobalDataManager::GetMaxOnline()
 {
 	return m_pGlobalDataObject->m_dwMaxOnline;
+}
+
+BOOL CGlobalDataManager::SetDataChange()
+{
+	///m_pGlobalDataObject->Lock();
+	//memset(m_pGlobalDataObject->m_CustomData, 0, len);
+	//SvrRegToSvrReq Req;
+	//Req.SerializePartialToArray(m_pGlobalDataObject->m_CustomData, Req.ByteSize());
+	//m_pGlobalDataObject->Unlock();
+	return TRUE;
 }

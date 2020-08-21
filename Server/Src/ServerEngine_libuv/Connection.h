@@ -3,7 +3,6 @@
 
 #include "IBufferHandler.h"
 #include "../ServerEngine/LockFreeQueue.h"
-#include "../ServerEngine/CritSec.h"
 
 #define RECV_BUF_SIZE               8192
 
@@ -52,6 +51,8 @@ public:
 	void	HandWritedata(size_t len);
 
 	BOOL	CheckHeader(CHAR* m_pPacket);
+
+	UINT32  GetIpAddr(BOOL bHost);
 public:
 	uv_tcp_t					m_hSocket;
 	uv_connect_t				m_ConnectReq;
@@ -83,10 +84,10 @@ public:
 	UINT64						m_LastRecvTick;
 
 	ArrayLockFreeQueue < IDataBuffer* > m_SendBuffList;
-	
+
 	IDataBuffer*				m_pSendingBuffer;
 
-	
+
 };
 
 
@@ -107,7 +108,9 @@ public:
 
 	BOOL		    DeleteConnection(CConnection* pConnection);
 
-	CConnection*    GetConnectionByConnID(UINT32 dwConnID);
+	BOOL            DeleteConnection(UINT32 nConnID);
+
+	CConnection*    GetConnectionByID(UINT32 dwConnID);
 
 	///////////////////////////////////////////
 	BOOL		    CloseAllConnection();
@@ -121,7 +124,7 @@ public:
 	CConnection*				m_pFreeConnRoot;
 	CConnection*				m_pFreeConnTail;
 	std::vector<CConnection*>	m_vtConnList;            //连接列表
-	CCritSec					m_CritSecConnList;
+	std::mutex					m_ConnListMutex;
 };
 
 #endif

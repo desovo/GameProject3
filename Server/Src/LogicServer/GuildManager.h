@@ -11,16 +11,15 @@ class CGuildManager
 public:
 	static CGuildManager* GetInstancePtr();
 
-	BOOL LoadAllGuildData(CppMySQL3DB& tDBConnection);
+	BOOL    LoadData(CppMySQL3DB& tDBConnection);
 
 	CGuild* GetGuildByID(UINT64 u64ID);
-
 
 	CGuild* CreateGuild(UINT64 uRoleID, std::string& strName, INT32 nIcon);
 
 	BOOL	RemoveGuild(UINT64 uGuildID);
 
-	CGuild*    GetGuildByName(std::string strName);
+	CGuild* GetGuildByName(std::string strName);
 
 	MemberDataObject* GetGuildLeader(UINT64 uGuildID);
 

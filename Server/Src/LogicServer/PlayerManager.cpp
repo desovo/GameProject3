@@ -3,10 +3,11 @@
 #include "RoleModule.h"
 #include "../ServerData/RoleData.h"
 #include "../Message/Msg_ID.pb.h"
+#include "TimerManager.h"
 
 CPlayerManager::CPlayerManager()
 {
-
+	TimerManager::GetInstancePtr()->AddFixTimer(0, 1, &CPlayerManager::ZeroTimer, this);
 }
 
 CPlayerManager::~CPlayerManager()
@@ -37,6 +38,35 @@ CPlayerObject* CPlayerManager::CreatePlayerByID( UINT64 u64RoleID )
 	return InsertAlloc(u64RoleID);
 }
 
+INT32 CPlayerManager::GetOnlineCount()
+{
+	CPlayerManager::TNodeTypePtr pNode = CPlayerManager::GetInstancePtr()->MoveFirst();
+	if (pNode == NULL)
+	{
+		return 0;
+	}
+
+	INT32 nCount = 0;
+	CPlayerObject* pTempObj = NULL;
+	for (; pNode != NULL; pNode = CPlayerManager::GetInstancePtr()->MoveNext(pNode))
+	{
+		pTempObj = pNode->GetValue();
+		if (pTempObj == NULL)
+		{
+			continue;
+		}
+
+		if (!pTempObj->IsOnline())
+		{
+			continue;
+		}
+
+		nCount++;
+	}
+
+	return nCount;
+}
+
 BOOL CPlayerManager::ReleasePlayer( UINT64 u64RoleID )
 {
 	CPlayerObject* pPlayer = GetByKey(u64RoleID);
@@ -46,47 +76,6 @@ BOOL CPlayerManager::ReleasePlayer( UINT64 u64RoleID )
 	pPlayer->Uninit();
 
 	return Delete(u64RoleID);
-}
-
-BOOL CPlayerManager::TryCleanPlayer()
-{
-	if (GetCount() >= 3000)
-	{
-		//开始要清理人员了, 找一个离线时间最长的角色清理出内存
-		UINT64 uMinLeaveTime = 0x0fffffffff;
-		UINT64 uReleaseRoleID = 0;
-
-		CPlayerManager::TNodeTypePtr pNode = CPlayerManager::GetInstancePtr()->MoveFirst();
-		ERROR_RETURN_FALSE(pNode != NULL);
-
-		CPlayerObject* pTempObj = NULL;
-		for (; pNode != NULL; pNode = CPlayerManager::GetInstancePtr()->MoveNext(pNode))
-		{
-			pTempObj = pNode->GetValue();
-			ERROR_RETURN_FALSE(pTempObj != NULL);
-
-			if (pTempObj->IsOnline())
-			{
-				continue;
-			}
-
-			CRoleModule* pRoleModule = (CRoleModule*)pTempObj->GetModuleByType(MT_ROLE);
-			ERROR_RETURN_FALSE(pRoleModule != NULL);
-
-			if (uMinLeaveTime > pRoleModule->m_pRoleDataObject->m_uLogoffTime)
-			{
-				uMinLeaveTime = pRoleModule->m_pRoleDataObject->m_uLogoffTime;
-				uReleaseRoleID = pTempObj->GetObjectID();
-			}
-		}
-
-		if (uReleaseRoleID != 0)
-		{
-			ReleasePlayer(uReleaseRoleID);
-		}
-	}
-
-	return TRUE;
 }
 
 BOOL CPlayerManager::BroadMessageToAll(UINT32 dwMsgID, const google::protobuf::Message& pdata)
@@ -124,6 +113,95 @@ BOOL CPlayerManager::BroadMessageToAll(UINT32 dwMsgID, const google::protobuf::M
 
 	//因为所有玩家是一个ProxyID
 	ServiceBase::GetInstancePtr()->SendMsgProtoBuf(dwProxyID, MSG_BROAD_MESSAGE_NOTIFY, 0, 0, Nty);
+
+	return TRUE;
+}
+
+BOOL CPlayerManager::ZeroTimer(UINT32 nParam)
+{
+	CPlayerManager::TNodeTypePtr pNode = CPlayerManager::GetInstancePtr()->MoveFirst();
+	if (pNode == NULL) //一个人也没有
+	{
+		return TRUE;
+	}
+
+	CPlayerObject* pTempObj = NULL;
+	for (; pNode != NULL; pNode = CPlayerManager::GetInstancePtr()->MoveNext(pNode))
+	{
+		pTempObj = pNode->GetValue();
+		ERROR_RETURN_FALSE(pTempObj != NULL);
+
+		if (!pTempObj->IsOnline())
+		{
+			continue;
+		}
+
+		pTempObj->OnNewDay();
+	}
+
+	return TRUE;
+}
+
+BOOL CPlayerManager::OnUpdate(UINT64 uTick)
+{
+	if (GetCount() <= 0)
+	{
+		return TRUE;
+	}
+
+	UINT64 uMinLeaveTime = 0x0fffffffff;
+	UINT64 uReleaseRoleID = 0;
+
+	CPlayerManager::TNodeTypePtr pNode = CPlayerManager::GetInstancePtr()->MoveFirst();
+	ERROR_RETURN_FALSE(pNode != NULL);
+
+	CPlayerObject* pTempObj = NULL;
+	for (; pNode != NULL; pNode = CPlayerManager::GetInstancePtr()->MoveNext(pNode))
+	{
+		pTempObj = pNode->GetValue();
+		ERROR_RETURN_FALSE(pTempObj != NULL);
+
+		if (pTempObj->IsOnline())
+		{
+			pTempObj->NotifyChange();
+		}
+		else
+		{
+			CRoleModule* pRoleModule = (CRoleModule*)pTempObj->GetModuleByType(MT_ROLE);
+			ERROR_RETURN_FALSE(pRoleModule != NULL);
+
+			if (uMinLeaveTime > pRoleModule->m_pRoleDataObject->m_uLogoffTime)
+			{
+				uMinLeaveTime = pRoleModule->m_pRoleDataObject->m_uLogoffTime;
+				uReleaseRoleID = pTempObj->GetRoleID();
+			}
+		}
+	}
+
+	if (uReleaseRoleID != 0 && GetCount() > 3000)
+	{
+		//当内存中的人数超过3000人，就清理一个离线时间最长的玩家
+		ReleasePlayer(uReleaseRoleID);
+	}
+
+	return TRUE;
+}
+
+BOOL CPlayerManager::ReleaseAll()
+{
+	CPlayerManager::TNodeTypePtr pNode = CPlayerManager::GetInstancePtr()->MoveFirst();
+	ERROR_RETURN_FALSE(pNode != NULL);
+
+	CPlayerObject* pPlayer = NULL;
+	for (; pNode != NULL; pNode = CPlayerManager::GetInstancePtr()->MoveNext(pNode))
+	{
+		pPlayer = pNode->GetValue();
+		ERROR_TO_CONTINUE(pPlayer != NULL);
+
+		pPlayer->Uninit();
+	}
+
+	Clear();
 
 	return TRUE;
 }

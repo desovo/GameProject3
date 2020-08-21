@@ -33,8 +33,7 @@ struct CopyDataObject : public ShareObject
 		csp.set_int32(4, m_dwResetCnt);
 		csp.set_uint64(5, m_uBattleTime);
 		csp.set_uint64(6, m_uResetTime);
-		pDB->Execute(&csp);
-		return TRUE;
+		return pDB->Execute(&csp);
 	}
 
 	BOOL Update(IDBInterface* pDB)
@@ -48,16 +47,15 @@ struct CopyDataObject : public ShareObject
 		csp.set_int32(4, m_dwResetCnt);
 		csp.set_uint64(5, m_uBattleTime);
 		csp.set_uint64(6, m_uResetTime);
-		pDB->Execute(&csp);
-		return TRUE;
+		return pDB->Execute(&csp);
 	}
 
 	BOOL Delete(IDBInterface* pDB)
 	{
-// 		static CDBStoredProcedure csp("delete from equip where guid = ?");
-// 		csp.set_uint64(0, m_uGuid);
-// 		pDB->Execute(&csp);
-		return TRUE;
+		static CDBStoredProcedure csp("delete from copy where copyid = ? and roleid = ?");
+		csp.set_uint32(0, m_dwCopyID);
+		csp.set_uint64(1, m_uRoleID);
+		return pDB->Execute(&csp);
 	}
 };
 
@@ -88,8 +86,7 @@ struct ChapterDataObject : public ShareObject
 		csp.set_uint64(2, m_uRoleID);
 		csp.set_uint32(3, m_dwStarAward);
 		csp.set_uint32(4, m_dwSceneAward);
-		pDB->Execute(&csp);
-		return TRUE;
+		return pDB->Execute(&csp);
 	}
 
 	BOOL Update(IDBInterface* pDB)
@@ -101,16 +98,15 @@ struct ChapterDataObject : public ShareObject
 		csp.set_uint64(2, m_uRoleID);
 		csp.set_uint32(3, m_dwStarAward);
 		csp.set_uint32(4, m_dwSceneAward);
-		pDB->Execute(&csp);
-		return TRUE;
+		return pDB->Execute(&csp);
 	}
 
 	BOOL Delete(IDBInterface* pDB)
 	{
-		// 		static CDBStoredProcedure csp("delete from equip where guid = ?");
-		// 		csp.set_uint64(0, m_uGuid);
-		// 		pDB->Execute(&csp);
-		return TRUE;
+		static CDBStoredProcedure csp("delete from chapter where chapterid = ? and roleid = ?");
+		csp.set_uint32(0, m_dwChapter);
+		csp.set_uint64(1, m_uRoleID);
+		return pDB->Execute(&csp);
 	}
 };
 

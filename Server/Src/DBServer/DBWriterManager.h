@@ -1,25 +1,23 @@
 ﻿#ifndef _DB_WRITER_MANAGER_H_
 #define _DB_WRITER_MANAGER_H_
 
-#include "../ServerData/GlobalData.h"
-#include "../ServerData/BagData.h"
-#include "../ServerData/CopyData.h"
-#include "../ServerData/EquipData.h"
-#include "../ServerData/PetData.h"
-#include "../ServerData/PartnerData.h"
-#include "../ServerData/GuildData.h"
-#include "../ServerData/TaskData.h"
-#include "../ServerData/MountData.h"
-#include "../ServerData/MailData.h"
-#include "../ServerData/RoleData.h"
-#include "../ServerData/ActivityData.h"
-#include "../ServerData/CounterData.h"
-#include "../ServerData/FriendData.h"
-#include "../ServerData/GemData.h"
-#include "../ServerData/SkillData.h"
+#include "GlobalData.h"
+#include "BagData.h"
+#include "CopyData.h"
+#include "EquipData.h"
+#include "PetData.h"
+#include "PartnerData.h"
+#include "GuildData.h"
+#include "TaskData.h"
+#include "MountData.h"
+#include "MailData.h"
+#include "RoleData.h"
+#include "ActivityData.h"
+#include "CounterData.h"
+#include "FriendData.h"
+#include "GemData.h"
+#include "SkillData.h"
 #include "DBInterface/DBConnection.h"
-
-Th_RetName _DBWriteThread(void* pParam);
 
 class CDBWriterManager
 {
@@ -36,12 +34,17 @@ public:
 	BOOL WriteDataToDB();
 
 	BOOL IsStop();
+
+	BOOL Update();
+
+	void DBWriteThread();
 public:
 	std::vector<DataWriterBase*> m_vtDataWriters;
 
 	BOOL			m_Stop;
-	THANDLE			m_hWorkThread;
+	std::thread*	m_pWorkThread;
 	CDBConnection   m_DBConnection;
+	UINT32          m_nCurErrorCount;
 };
 
 #endif //_DB_WRITER_MANAGER_H_

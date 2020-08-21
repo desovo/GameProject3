@@ -30,7 +30,7 @@ struct PetDataObject : public ShareObject
 	BOOL Create(IDBInterface* pDB)
 	{
 		static CDBStoredProcedure csp("REPLACE INTO pet (guid, roleid, petid, isuse, strengthlvl, refinelvl, starlvl) \
-			VALUES(?,?,?,?,?,?,?,?);");
+			VALUES(?,?,?,?,?,?,?);");
 		csp.set_uint64(0, m_uGuid);
 		csp.set_uint64(1, m_uRoleID);
 		csp.set_uint32(2, m_PetID);
@@ -38,14 +38,13 @@ struct PetDataObject : public ShareObject
 		csp.set_int32(4, m_StrengthLvl);
 		csp.set_int32(5, m_RefineLevel);
 		csp.set_int32(6, m_StarLevel);
-		pDB->Execute(&csp);
-		return TRUE;
+		return pDB->Execute(&csp);
 	}
 
 	BOOL Update(IDBInterface* pDB)
 	{
 		static CDBStoredProcedure csp("REPLACE INTO pet (guid, roleid, petid, isuse, strengthlvl, refinelvl, starlvl) \
-			VALUES(?,?,?,?,?,?,?,?);");
+			VALUES(?,?,?,?,?,?,?);");
 		csp.set_uint64(0, m_uGuid);
 		csp.set_uint64(1, m_uRoleID);
 		csp.set_uint32(2, m_PetID);
@@ -53,16 +52,14 @@ struct PetDataObject : public ShareObject
 		csp.set_int32(4, m_StrengthLvl);
 		csp.set_int32(5, m_RefineLevel);
 		csp.set_int32(6, m_StarLevel);
-		pDB->Execute(&csp);
-		return TRUE;
+		return pDB->Execute(&csp);
 	}
 
 	BOOL Delete(IDBInterface* pDB)
 	{
 		static CDBStoredProcedure csp("delete from pet where guid = ?");
 		csp.set_uint64(0, m_uGuid);
-		pDB->Execute(&csp);
-		return TRUE;
+		return pDB->Execute(&csp);
 	}
 };
 

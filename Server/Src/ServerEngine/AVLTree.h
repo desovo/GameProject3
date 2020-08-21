@@ -125,7 +125,7 @@ TValue* AVLTree<TKey, TValue>::InsertAlloc( TKey Key )
 		if(!InsertInner(m_pRoot, pNode))
 		{
 			FreeNode(pNode);
-			ASSERT(FALSE);
+			//表示插入失败，这个key在树中己经存在
 			return NULL;
 		}
 	}
@@ -176,6 +176,8 @@ TreeNode<TKey, TValue>* AVLTree<TKey, TValue>::AllocNode()
 	TNodeTypePtr pValidNode = m_pFreeHead;
 
 	m_pFreeHead = m_pFreeHead->m_pRight;
+
+	pValidNode = new(pValidNode)TNodeType();
 
 	m_pFreeHead->m_pLeft = NULL;
 
@@ -267,7 +269,6 @@ bool AVLTree<TKey, TValue>::AllocBufferNode(int nSize)
 	TNodeType* pNode = (TNodeType*)malloc(sizeof(TNodeType) * nSize);
 	if(pNode == NULL)
 	{
-		ASSERT_FAIELD;
 		return false;
 	}
 

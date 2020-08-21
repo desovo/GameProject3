@@ -12,8 +12,6 @@ public:
 
 	~CLogicMsgHandler();
 
-	BOOL DispatchPacket(NetPacket* pNetPacket);
-
 	BOOL Init(UINT32 dwReserved);
 
 	BOOL Uninit();
@@ -22,6 +20,7 @@ public:
 
 	BOOL OnSecondTimer();
 
+	VOID RegisterMessageHanler();
 public:
 	BOOL ProcessGMCommand(UINT64 u64ID, std::vector<std::string>& vtParam);
 
@@ -38,13 +37,10 @@ public:
 	BOOL OnMsgRoleLogoutReq(NetPacket* pNetPacket);
 	BOOL OnMsgRoleDisconnect(NetPacket* pNetPacket);
 	BOOL OnMsgMainCopyReq(NetPacket* pNetPacket);
-	BOOL OnMsgAbortCopyReq(NetPacket* pNetPacket);
+	BOOL OnMsgAbortSceneNtf(NetPacket* pNetPacket);
 	BOOL OnMsgBackToCityReq(NetPacket* pNetPacket);
-	BOOL OnMsgRegToLoginAck(NetPacket* pNetPacket);
 	BOOL OnMsgChatMessageReq(NetPacket* pNetPacket);
 	BOOL OnMsgReconnectReq(NetPacket* pNetPacket);
-	BOOL OnMsgTestAddItemReq(NetPacket* pNetPacket);
-	BOOL OnMsgWebCommandReq(NetPacket* pNetPacket);
 	//*********************消息处理定义结束******************************
 };
 

@@ -1,20 +1,7 @@
 ﻿#ifndef _NET_MANAGER_H_
 #define _NET_MANAGER_H_
 #include "IBufferHandler.h"
-#include "CommonThreadFunc.h"
-#include "CommonMsgQueue.h"
-
-Th_RetName _NetEventThread( void* pParam );
-
-Th_RetName _NetListenThread( void* pParam );
-
-struct EventNode
-{
-	UINT32		dwEvent;
-	void*		pPtr;
-};
-
-////////////////////////////////////////////////
+#include "Connection.h"
 
 class CNetManager
 {
@@ -29,19 +16,19 @@ public:
 		return &NetManager;
 	}
 public:
-	BOOL	Start(UINT16 nPortNum,  UINT32 nMaxConn, IDataHandler* pBufferHandler);
+	BOOL	Start(UINT16 nPortNum,  UINT32 nMaxConn, IDataHandler* pBufferHandler, std::string strIpAddr);
 
-	BOOL	Close();
+	BOOL	Stop();
 
-	BOOL	SendMessageByConnID(UINT32 dwConnID,  UINT32 dwMsgID, UINT64 u64TargetID, UINT32 dwUserData,  const char* pData, UINT32 dwLen);
+	BOOL	SendMessageData(UINT32 dwConnID,  UINT32 dwMsgID, UINT64 u64TargetID, UINT32 dwUserData,  const char* pData, UINT32 dwLen);
 
-	BOOL    SendMsgBufByConnID(UINT32 dwConnID, IDataBuffer* pBuffer);
+	BOOL    SendMessageBuff(UINT32 dwConnID, IDataBuffer* pBuffer);
 public:
 	BOOL	InitNetwork();
 
 	BOOL	UninitNetwork();
 
-	BOOL	StartListen(UINT16 nPortNum);
+	BOOL	StartNetListen(UINT16 nPortNum, std::string strIpAddr);
 
 	BOOL	StopListen();
 
@@ -69,47 +56,17 @@ public:
 
 	CConnection*	ConnectTo_Async(std::string strIpAddr, UINT16 sPort);
 
+	BOOL            WaitConnect();
 public:
 	SOCKET				m_hListenSocket;
-
+	NetIoOperatorData	m_IoOverlapAccept;
+	SOCKET              m_hCurAcceptSocket;
 	HANDLE				m_hCompletePort;
-
+	CHAR                m_AddressBuf[128];
 	BOOL				m_bCloseEvent;		//是否关闭事件处理线程
 
 	IDataHandler*		m_pBufferHandler;
-	THANDLE				 m_hListenThread;
-	std::vector<THANDLE> m_vtEventThread;
-
-#ifndef WIN32
-
-	static void SignalHandler(int nValue)
-	{
-		return;
-	}
-
-	BOOL  ClearSignal()
-	{
-		m_NewAct.sa_handler = CNetManager::SignalHandler;
-
-		sigemptyset(&m_NewAct.sa_mask); //清空此信号集
-
-		m_NewAct.sa_flags = 0;
-
-		sigaction(SIGPIPE, &m_NewAct, &m_OldAct);
-
-		return TRUE;
-	}
-
-	BOOL RestoreSignal()
-	{
-		sigaction(SIGPIPE, &m_OldAct, NULL); //恢复成原始状态
-
-		return TRUE;
-	}
-
-	struct sigaction m_NewAct, m_OldAct;
-
-#endif
+	std::vector<std::thread*> m_vtEventThread;
 
 };
 

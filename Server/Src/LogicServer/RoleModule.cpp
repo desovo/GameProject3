@@ -6,7 +6,7 @@
 
 CRoleModule::CRoleModule(CPlayerObject* pOwner): CModuleBase(pOwner)
 {
-
+	RegisterMessageHanler();
 }
 
 CRoleModule::~CRoleModule()
@@ -32,6 +32,8 @@ BOOL CRoleModule::OnCreate(UINT64 u64RoleID)
 	m_pRoleDataObject->m_CityCopyID = pInfo->dwBornCity;
 
 	m_pRoleDataObject->m_uCreateTime = CommonFunc::GetCurrTime();
+	m_pRoleDataObject->m_uLogonTime = m_pRoleDataObject->m_uCreateTime;
+	m_pRoleDataObject->m_uLogoffTime = m_pRoleDataObject->m_uLogonTime;
 
 	m_pRoleDataObject->Unlock();
 
@@ -49,6 +51,7 @@ BOOL CRoleModule::InitBaseData( UINT64 u64RoleID, std::string Name, UINT32 dwCar
 	strncpy(m_pRoleDataObject->m_szName, Name.c_str(), CommonFunc::Min(ROLE_NAME_LEN, (INT32)Name.size()));
 	m_pRoleDataObject->m_nLangID = 0;
 	m_pRoleDataObject->m_CarrerID = dwCarrerID;
+	m_pRoleDataObject->m_nChannel = dwChannel;
 	m_pRoleDataObject->Unlock();
 
 	StCarrerInfo* pInfo = CStaticData::GetInstancePtr()->GetCarrerInfo(m_pRoleDataObject->m_CarrerID);
@@ -91,6 +94,10 @@ BOOL CRoleModule::OnLogout()
 
 BOOL CRoleModule::OnNewDay()
 {
+	m_pRoleDataObject->Lock();
+	m_pRoleDataObject->m_uLogoffTime = CommonFunc::GetCurrTime() + 1;
+	m_pRoleDataObject->Unlock();
+
 	return TRUE;
 }
 
@@ -105,14 +112,16 @@ BOOL CRoleModule::ReadFromDBLoginData( DBRoleLoginAck& Ack )
 	m_pRoleDataObject->m_CarrerID = Ack.roledata().carrerid();
 	m_pRoleDataObject->m_Level = Ack.roledata().level();
 	m_pRoleDataObject->m_Exp = Ack.roledata().exp();
-	m_pRoleDataObject->m_VipLvl = Ack.roledata().viplvl();
-	m_pRoleDataObject->m_VipExp = Ack.roledata().vipexp();
+	m_pRoleDataObject->m_nVipLvl = Ack.roledata().viplvl();
+	m_pRoleDataObject->m_nVipExp = Ack.roledata().vipexp();
 	m_pRoleDataObject->m_nLangID = Ack.roledata().langid();
 	m_pRoleDataObject->m_CityCopyID = Ack.roledata().citycopyid();
+	m_pRoleDataObject->m_uGuildID = Ack.roledata().guildid();
 	m_pRoleDataObject->m_uCreateTime = Ack.roledata().createtime();
 	m_pRoleDataObject->m_uLogonTime = Ack.roledata().logontime();
 	m_pRoleDataObject->m_uLogoffTime = Ack.roledata().logofftime();
-
+	m_pRoleDataObject->m_nChannel = Ack.roledata().channel();
+	
 	if(m_pRoleDataObject->m_CityCopyID == 0)
 	{
 		StCarrerInfo* pInfo = CStaticData::GetInstancePtr()->GetCarrerInfo(m_pRoleDataObject->m_CarrerID);
@@ -150,8 +159,8 @@ BOOL CRoleModule::SaveToClientLoginData(RoleLoginAck& Ack)
 	Ack.set_carrer(m_pRoleDataObject->m_CarrerID);
 	Ack.set_fightvalue(m_pRoleDataObject->m_u64Fight);
 	Ack.set_exp(m_pRoleDataObject->m_Exp);
-	Ack.set_viplvl(m_pRoleDataObject->m_VipLvl);
-	Ack.set_vipexp(m_pRoleDataObject->m_VipExp);
+	Ack.set_viplvl(m_pRoleDataObject->m_nVipLvl);
+	Ack.set_vipexp(m_pRoleDataObject->m_nVipExp);
 	for(int i = 0; i < ACTION_NUM; i++)
 	{
 		ActionItem* pItem = Ack.add_actionlist();
@@ -173,9 +182,25 @@ BOOL CRoleModule::CalcFightValue(INT32 nValue[PROPERTY_NUM], INT32 nPercent[PROP
 }
 
 
-BOOL CRoleModule::DispatchPacket(NetPacket* pNetPacket)
+VOID CRoleModule::RegisterMessageHanler()
 {
-	return FALSE;
+}
+
+INT64 CRoleModule::GetProperty(ERoleProperty ePropertyID)
+{
+	switch (ePropertyID)
+	{
+		case ERP_LEVEL:
+			return GetLevel();
+		case ERP_VIPLEVEL:
+			return GetVipLevel();
+		case ERP_CHANNEL:
+			return m_pRoleDataObject->m_nChannel;
+		default:
+			break;
+	}
+
+	return 0;
 }
 
 BOOL CRoleModule::CostAction(UINT32 dwActionID, INT32 nActionNum)
@@ -331,6 +356,16 @@ UINT32 CRoleModule::GetActorID()
 	return m_dwActorID;
 }
 
+INT32 CRoleModule::GetLevel()
+{
+	return m_pRoleDataObject->m_Level;
+}
+
+INT32 CRoleModule::GetVipLevel()
+{
+	return m_pRoleDataObject->m_nVipLvl;
+}
+
 CHAR* CRoleModule::GetName()
 {
 	return m_pRoleDataObject->m_szName;
@@ -341,6 +376,11 @@ UINT32 CRoleModule::GetCarrerID()
 	return m_pRoleDataObject->m_CarrerID;
 }
 
+UINT64 CRoleModule::GetRoleID()
+{
+	return m_pRoleDataObject->m_uRoleID;
+}
+
 UINT64 CRoleModule::AddExp( INT32 nExp )
 {
 	if(nExp <= 0)
@@ -348,8 +388,63 @@ UINT64 CRoleModule::AddExp( INT32 nExp )
 		return m_pRoleDataObject->m_Exp;
 	}
 
+	m_pRoleDataObject->Lock();
 	m_pRoleDataObject->m_Exp += nExp;
+	m_pRoleDataObject->Unlock();
+
+	while (m_pRoleDataObject->m_Level < MAX_ROLE_LEVEL)
+	{
+		StLevelInfo* pLevelInfo = CStaticData::GetInstancePtr()->GetCarrerLevelInfo(m_pRoleDataObject->m_CarrerID, m_pRoleDataObject->m_Level + 1);
+		ERROR_RETURN_FALSE(pLevelInfo != NULL);
+
+		if (m_pRoleDataObject->m_Exp >= pLevelInfo->dwNeedExp)
+		{
+			m_pRoleDataObject->Lock();
+			m_pRoleDataObject->m_Exp = m_pRoleDataObject->m_Exp - pLevelInfo->dwNeedExp;
+			m_pRoleDataObject->m_Level += 1;
+			m_pRoleDataObject->Unlock();
+		}
+		else
+		{
+			break;
+		}
+	}
 
 	return m_pRoleDataObject->m_Exp;
+}
+
+UINT64 CRoleModule::GetLastLogoffTime()
+{
+	ERROR_RETURN_VALUE(m_pRoleDataObject != NULL, 0);
+
+	return m_pRoleDataObject->m_uLogoffTime;
+}
+
+BOOL CRoleModule::SetLastLogoffTime(UINT64 uTime)
+{
+	ERROR_RETURN_FALSE(m_pRoleDataObject != NULL);
+
+	m_pRoleDataObject->m_uLogoffTime = uTime;
+
+	return TRUE;
+}
+
+UINT64 CRoleModule::GetLastLogonTime()
+{
+	ERROR_RETURN_VALUE(m_pRoleDataObject != NULL, 0);
+
+	return m_pRoleDataObject->m_uLogonTime;
+}
+
+VOID CRoleModule::SetGroupMailTime(UINT64 uTime)
+{
+	m_pRoleDataObject->Lock();
+	m_pRoleDataObject->m_uGroupMailTime = uTime;
+	m_pRoleDataObject->Unlock();
+}
+
+UINT64 CRoleModule::GetGroupMailTime()
+{
+	return m_pRoleDataObject->m_uGroupMailTime;
 }
 

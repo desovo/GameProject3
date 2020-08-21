@@ -29,7 +29,9 @@ public:
 
 	BOOL CalcFightValue(INT32 nValue[PROPERTY_NUM], INT32 nPercent[PROPERTY_NUM], INT32& FightValue);
 
-	BOOL DispatchPacket(NetPacket* pNetPacket);
+	VOID RegisterMessageHanler();
+
+	BOOL ToTransferData(TransferDataItem* pTransItem);
 
 public:
 	UINT64 AddPartner(UINT32 dwPartnerID);
@@ -47,11 +49,6 @@ public:
 public:
 	std::map<UINT64, PartnerDataObject*>m_mapPartnerData;
 	PartnerDataObject* m_vtSetupPartner[PARTNER_MAX_NUM];
-
-	std::set<UINT64> m_setChange;
-	std::set<UINT64> m_setRemove;
-
-
 };
 
 #endif //__PARTNER_MODULE_H__

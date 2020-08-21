@@ -31,16 +31,19 @@ CClientObject::CClientObject(void)
 	m_dwAccountID = 0;
 	m_dwHostState = ST_NONE;
 	m_x = 0;
-	m_y = 0;
-	m_z = 13;
+	m_y = -2;
+	m_z = 11;
 	m_dwCarrerID = 0;
-	m_ft = PI * 2 * (rand() % 360) / 360;
+	m_ft = rand() % 360;
 	m_uSkillTime = 0;
+	m_SkillID = 0;
+	m_uMoveTime = 0;
 	m_ClientConnector.RegisterMsgHandler((IMessageHandler*)this);
 }
 
 CClientObject::~CClientObject(void)
 {
+	m_uMoveTime = 0;
 }
 
 BOOL CClientObject::DispatchPacket(UINT32 dwMsgID, CHAR* PacketBuf, INT32 BufLen)
@@ -167,8 +170,9 @@ BOOL CClientObject::OnUpdate( UINT32 dwTick )
 	{
 		if(m_ClientConnector.GetConnectState() == ECS_NO_CONNECT)
 		{
-			m_ClientConnector.ConnectTo("127.0.0.1", 9001);
-			//m_ClientConnector.ConnectToServer("47.93.31.69", 9001);
+			//m_ClientConnector.ConnectTo("127.0.0.1", 9001);
+			m_ClientConnector.ConnectTo("47.93.31.69", 9001);
+			//m_ClientConnector.ConnectTo("47.105.89.43", 9001);
 		}
 		else if (m_ClientConnector.GetConnectState() == ECS_CONNECTED)
 		{
@@ -260,6 +264,7 @@ BOOL CClientObject::SendSelectSvrReq(UINT32 dwSvrID)
 {
 	SelectServerReq Req;
 	Req.set_serverid(dwSvrID);
+	Req.set_accountid(m_dwAccountID);
 	m_ClientConnector.SendData(MSG_SELECT_SERVER_REQ, Req, 0, 0);
 	return TRUE;
 }
@@ -312,7 +317,7 @@ BOOL CClientObject::OnMsgRoleListAck(UINT32 dwMsgID, CHAR* PacketBuf, INT32 BufL
 	{
 		m_dwHostState = ST_RoleCreate;
 
-		SendCreateRoleReq(m_dwAccountID, m_strAccountName + CommonConvert::IntToString(rand() % 1000), m_dwCarrerID);
+		SendCreateRoleReq(m_dwAccountID, m_strAccountName + CommonConvert::IntToString(m_dwAccountID) + CommonConvert::IntToString(rand() % 1000), m_dwCarrerID);
 	}
 
 	return TRUE;
@@ -370,11 +375,10 @@ VOID CClientObject::TestCopy()
 
 VOID CClientObject::TestExitCopy()
 {
-	AbortCopyReq Req;
-	Req.set_copyid(m_dwCopyID);
-	Req.set_copyguid(m_dwCopyGuid);
-	Req.set_serverid(m_dwCopySvrID);
-	m_ClientConnector.SendData(MSG_COPY_ABORT_REQ, Req, m_RoleIDList[0], 0);
+	AbortSceneReq Req;
+	Req.set_roleid(m_RoleIDList[0]);
+	Req.set_reason(0);
+	m_ClientConnector.SendData(MSG_ABORT_SCENE_REQ, Req, m_RoleIDList[0], m_dwCopyGuid);
 	m_dwHostState = ST_EnterCopy;
 }
 
@@ -408,69 +412,90 @@ VOID CClientObject::TestMove()
 {
 	ObjectActionReq Req;
 	ActionReqItem* pItem =  Req.add_actionlist();
-	pItem->set_actionid(AT_WALK);
+	pItem->set_actionid(AT_RUN);
 	pItem->set_objectguid(m_RoleIDList[0]);
 
-	UINT64 dwTimeDiff = CommonFunc::GetTickCount() - m_uMoveTime;
-	if(dwTimeDiff < 160)
+	if (m_uMoveTime <= 0)
 	{
-		return ;
+		m_uMoveTime = CommonFunc::GetTickCount();
 	}
 
+
+	UINT64 dwTimeDiff = CommonFunc::GetTickCount() - m_uMoveTime;
+	if (dwTimeDiff > 100)
+	{
+		FLOAT fSpeed = 6.25f;
+
+		FLOAT fTime = dwTimeDiff;
+
+		fTime = fTime / 1000.0f;
+
+		printf("Distance:%f\n", fSpeed * fTime);
+
+		MoveForward(fSpeed * fTime);
+
+		m_uMoveTime = CommonFunc::GetTickCount();
+
+		bool bTrun = false;
+
+		if (m_x > 10)
+		{
+			bTrun = true;
+			m_x = 10;
+		}
+
+		if (m_z > 20)
+		{
+			bTrun = true;
+			m_z = 20;
+		}
+
+		if (m_x < -10)
+		{
+			bTrun = true;
+			m_x = -10;
+		}
+
+		if (m_z < 0)
+		{
+			bTrun = true;
+			m_z = 0;
+		}
+
+		if (bTrun)
+		{
+			m_ft += 180;
+		}
+
+		m_ft = m_ft > 360 ? (m_ft - 360) : m_ft;
+
+		pItem->set_hostx(m_x);
+		pItem->set_hosty(-2.45);
+		pItem->set_hostz(m_z);
+		pItem->set_hostft(m_ft);
+		m_ClientConnector.SendData(MSG_OBJECT_ACTION_REQ, Req, m_RoleIDList[0], m_dwCopyGuid);
+	}
+}
+
+VOID CClientObject::TestCastSkill()
+{
 	if (m_uSkillTime == 0)
 	{
 		m_uSkillTime = CommonFunc::GetTickCount();
 	}
 
-	dwTimeDiff = CommonFunc::GetTickCount() - m_uSkillTime;
-	if (dwTimeDiff > 10000)
+	UINT64 dwTimeDiff = CommonFunc::GetTickCount() - m_uSkillTime;
+	if (dwTimeDiff < 10000)
 	{
-		TestCastSkill();
-		m_uSkillTime = CommonFunc::GetTickCount();
+
+		return;
 	}
 
-	m_uMoveTime = CommonFunc::GetTickCount();
-
-	MoveForward(1.0f);
-
-	if(m_x > 10)
-	{
-		m_x = 10;
-		m_ft += rand() % 10000;
-		m_ft = (int)m_ft % 360;
-	}
-	if(m_z > 20)
-	{
-		m_z = 20;
-		m_ft += rand() % 10000;
-		m_ft = (int)m_ft % 360;
-	}
-	if(m_x < -10)
-	{
-		m_x = -10;
-		m_ft += rand() % 10000;
-		m_ft = (int)m_ft % 360;
-	}
-	if(m_z < 0)
-	{
-		m_z = 0;
-		m_ft += rand() % 10000;
-		m_ft = (int)m_ft % 360;
-	}
-
-	pItem->set_hostx(m_x);
-	pItem->set_hosty(-2.45);
-	pItem->set_hostz(m_z);
-	pItem->set_hostft(m_ft);
-
-	m_ClientConnector.SendData(MSG_OBJECT_ACTION_REQ, Req, m_RoleIDList[0], m_dwCopyGuid);
-}
-
-VOID CClientObject::TestCastSkill()
-{
 	SkillCastReq Req;
 	Req.set_objectguid(m_RoleIDList[0]);
-	Req.set_skillid(2004);
+	Req.set_skillid(m_SkillID);
+
+	m_uSkillTime = CommonFunc::GetTickCount();
 
 	m_ClientConnector.SendData(MSG_SKILL_CAST_REQ, Req, m_RoleIDList[0], m_dwCopyGuid);
 }
@@ -483,7 +508,9 @@ BOOL CClientObject::SendRoleLogoutReq( UINT64 u64CharID )
 BOOL CClientObject::SendRoleLoginReq(UINT64 u64CharID)
 {
 	RoleLoginReq Req;
+	Req.set_accountid(m_dwAccountID);
 	Req.set_roleid(u64CharID);
+	Req.set_logincode(11111);
 	m_ClientConnector.SendData(MSG_ROLE_LOGIN_REQ, Req, 0, 0);
 	return TRUE;
 }
@@ -514,10 +541,10 @@ BOOL CClientObject::SendMainCopyReq()
 
 BOOL CClientObject::SendAbortCopyReq()
 {
-	AbortCopyReq Req;
-	Req.set_copyid(m_dwCopyGuid);
-	m_ClientConnector.SendData(MSG_COPY_ABORT_REQ, Req, m_RoleIDList[0], 0);
-
+	AbortSceneReq Req;
+	Req.set_roleid(m_RoleIDList[0]);
+	Req.set_reason(0);
+	m_ClientConnector.SendData(MSG_ABORT_SCENE_REQ, Req, m_RoleIDList[0], m_dwCopyGuid);
 	m_dwHostState = ST_AbortCopy;
 	return TRUE;
 }
@@ -535,6 +562,17 @@ BOOL CClientObject::OnMsgRoleLoginAck(UINT32 dwMsgID, CHAR* PacketBuf, INT32 Buf
 	Ack.ParsePartialFromArray(PacketBuf, BufLen);
 	PacketHeader* pHeader = (PacketHeader*)PacketBuf;
 	m_RoleIDList.push_back(Ack.roleid());
+
+	for (int i = 0; i < Ack.skilllist_size(); i++)
+	{
+		const SkillItem skillItem = Ack.skilllist(i);
+		if (skillItem.keypos() == 1)
+		{
+			m_SkillID = skillItem.skillid();
+		}
+
+	}
+
 
 	static int loginnum = 0;
 

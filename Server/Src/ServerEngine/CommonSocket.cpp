@@ -3,7 +3,7 @@
 
 BOOL  CommonSocket::SetSocketReuseable(SOCKET hSocket)
 {
-	char nReuse = 1;
+	int nReuse = 1;
 
 	if(0 != setsockopt(hSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&nReuse, sizeof(int)))
 	{
@@ -14,28 +14,15 @@ BOOL  CommonSocket::SetSocketReuseable(SOCKET hSocket)
 }
 
 
-//设置套接字为非阻塞状态
-BOOL    CommonSocket::SetSocketUnblock(SOCKET hSocket)
+//设置套接字阻塞状态
+BOOL    CommonSocket::SetSocketBlock(SOCKET hSocket, BOOL bBlock)
 {
 #ifdef WIN32
-	u_long iMode = 1;
+	u_long iMode = bBlock ? 0 : 1;
 	ioctlsocket(hSocket, FIONBIO, &iMode);
 #else
 	int flags = fcntl(hSocket, F_GETFL, 0);
-	fcntl(hSocket, F_SETFL, flags | O_NONBLOCK);
-#endif
-
-	return TRUE;
-}
-
-BOOL    CommonSocket::SetSocketBlock(SOCKET hSocket)
-{
-#ifdef WIN32
-	u_long iMode = 0;
-	ioctlsocket(hSocket, FIONBIO, &iMode);
-#else
-	int flags = fcntl(hSocket, F_GETFL, 0);
-	fcntl(hSocket, F_SETFL, flags & (~O_NONBLOCK));
+	fcntl(hSocket, F_SETFL, bBlock ? (flags & (~O_NONBLOCK)) : (flags | O_NONBLOCK));
 #endif
 
 	return TRUE;
@@ -45,7 +32,7 @@ BOOL    CommonSocket::SetSocketBuffSize(SOCKET hSocket, INT32 nRecvSize, INT32 n
 {
 	if (nRecvSize > 0)
 	{
-		if (0 != setsockopt(hSocket, IPPROTO_TCP, SO_RCVBUF, (char*)&nRecvSize, sizeof(INT32)))
+		if (0 != setsockopt(hSocket, SOL_SOCKET, SO_RCVBUF, (char*)&nRecvSize, sizeof(INT32)))
 		{
 			return FALSE;
 		}
@@ -53,13 +40,54 @@ BOOL    CommonSocket::SetSocketBuffSize(SOCKET hSocket, INT32 nRecvSize, INT32 n
 
 	if (nSendSize > 0)
 	{
-		if (0 != setsockopt(hSocket, IPPROTO_TCP, SO_SNDBUF, (char*)&nSendSize, sizeof(INT32)))
+		if (0 != setsockopt(hSocket, SOL_SOCKET, SO_SNDBUF, (char*)&nSendSize, sizeof(INT32)))
 		{
 			return FALSE;
 		}
 	}
 
 	return TRUE;
+}
+
+std::string CommonSocket::GetRemoteIP(SOCKET hSocket)
+{
+	sockaddr_in     _sockAddr;
+
+	socklen_t       _sockAddr_len = sizeof(_sockAddr);
+
+	memset(&_sockAddr, 0, sizeof(_sockAddr));
+
+	getpeername(hSocket, (sockaddr*)&_sockAddr, &_sockAddr_len);
+
+	CHAR szIpBuffer[100] = { 0 };
+
+	inet_ntop(AF_INET, &_sockAddr.sin_addr, szIpBuffer, 100);
+
+	return std::string(szIpBuffer);
+}
+
+UINT32 CommonSocket::HostToNet(UINT32 nValue)
+{
+	return htonl(nValue);
+}
+
+UINT32 CommonSocket::NetToHost(UINT32 nValue)
+{
+	return ntohl(nValue);
+}
+
+VOID CommonSocket::IgnoreSignal()
+{
+#ifdef WIN32
+
+#else
+	struct sigaction sig;
+	sigemptyset(&sig.sa_mask);
+	sig.sa_flags = 0;
+	sig.sa_handler = SIG_IGN;
+	sigaction(SIGPIPE, &sig, 0);
+	sigaction(SIGHUP, &sig, 0);
+#endif
 }
 
 BOOL    CommonSocket::SetSocketNoDelay(SOCKET hSocket)
@@ -83,6 +111,8 @@ BOOL   CommonSocket::InitNetwork()
 	{
 		return FALSE;
 	}
+#else
+	IgnoreSignal();
 #endif
 	return TRUE;
 }
@@ -110,7 +140,7 @@ void   CommonSocket::CloseSocket(SOCKET hSocket)
 
 std::string CommonSocket::GetLocalIP()
 {
-	char hostname[256];
+	char hostname[256] = { 0 };
 	int ret = gethostname(hostname, sizeof(hostname));
 	if (ret == SOCKET_ERROR)
 	{
@@ -130,12 +160,12 @@ std::string CommonSocket::GetLocalIP()
 
 void   CommonSocket::ShutDownSend(SOCKET hSocket)
 {
-	shutdown(hSocket, 0);
+	shutdown(hSocket, 1);
 }
 
 void   CommonSocket::ShutDownRecv(SOCKET hSocket)
 {
-	shutdown(hSocket, 1);
+	shutdown(hSocket, 0);
 }
 
 
@@ -217,24 +247,6 @@ BOOL CommonSocket::IsSocketValid(SOCKET hSocket)
 	return TRUE;
 }
 
-std::string  CommonSocket::GetLastErrorStr(INT32 nError)
-{
-	std::string strErrorText;
-#ifdef WIN32
-	LPVOID lpMsgBuf;
-	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, nError,
-	              MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) &lpMsgBuf, 0, NULL);
-
-	strErrorText = (LPTSTR)lpMsgBuf;
-
-	LocalFree(lpMsgBuf);
-#else
-	strErrorText = strerror(nError);
-#endif
-
-	return strErrorText;
-}
-
 UINT32  CommonSocket::IpAddrStrToInt(CHAR* pszIpAddr)
 {
 	sockaddr_in SvrAddr;
@@ -256,23 +268,32 @@ UINT32  CommonSocket::IpAddrStrToInt(const CHAR* pszIpAddr)
 
 #ifdef WIN32
 
-BOOL	CommonSocket::AcceptSocketEx(SOCKET hListenSocket, LPOVERLAPPED lpOverlapped)
+BOOL	CommonSocket::AcceptSocketEx(SOCKET hListenSocket, SOCKET hAcceptSocket, CHAR* pBuff, LPOVERLAPPED lpOverlapped)
 {
-	LPFN_ACCEPTEX lpfnAcceptEx = NULL;
+	static LPFN_ACCEPTEX lpfnAcceptEx = NULL;
 
-	DWORD dwBytes;
-	GUID GuidAcceptEx = WSAID_ACCEPTEX;
-	if (SOCKET_ERROR == WSAIoctl(hListenSocket, SIO_GET_EXTENSION_FUNCTION_POINTER,
-		&GuidAcceptEx, sizeof(GuidAcceptEx),
-		&lpfnAcceptEx, sizeof(lpfnAcceptEx),
-		&dwBytes, NULL, NULL))
+	if (pBuff == NULL)
 	{
 		return FALSE;
 	}
 
-	SOCKET hAcceptSocket = CreateSocket();
+	DWORD dwBytes = 0;
+	if (lpfnAcceptEx == NULL)
+	{
 
-	if (!lpfnAcceptEx(hListenSocket, hAcceptSocket, NULL, NULL, NULL, NULL, NULL, lpOverlapped))
+		GUID GuidAcceptEx = WSAID_ACCEPTEX;
+		if (SOCKET_ERROR == WSAIoctl(hListenSocket, SIO_GET_EXTENSION_FUNCTION_POINTER,
+		                             &GuidAcceptEx, sizeof(GuidAcceptEx),
+		                             &lpfnAcceptEx, sizeof(lpfnAcceptEx),
+		                             &dwBytes, NULL, NULL))
+		{
+			return FALSE;
+		}
+	}
+
+	dwBytes = 0;
+
+	if (!lpfnAcceptEx(hListenSocket, hAcceptSocket, pBuff, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, &dwBytes, lpOverlapped))
 	{
 		if (ERROR_IO_PENDING != CommonSocket::GetSocketLastError())
 		{
@@ -283,18 +304,72 @@ BOOL	CommonSocket::AcceptSocketEx(SOCKET hListenSocket, LPOVERLAPPED lpOverlappe
 	return TRUE;
 }
 
+BOOL CommonSocket::GetSocketAddress(SOCKET hSocket, CHAR* pDataBuffer, sockaddr_in*& pAddrClient, sockaddr_in*& pAddrLocal)
+{
+	static  LPFN_GETACCEPTEXSOCKADDRS lpfnGetAcceptExSockaddrs = NULL;
+	if (lpfnGetAcceptExSockaddrs == NULL)
+	{
+		DWORD dwBytes;
+		GUID GuidAddressEx = WSAID_GETACCEPTEXSOCKADDRS;
+		if (SOCKET_ERROR == WSAIoctl(hSocket, SIO_GET_EXTENSION_FUNCTION_POINTER,
+		                             &GuidAddressEx, sizeof(GuidAddressEx),
+		                             &lpfnGetAcceptExSockaddrs, sizeof(lpfnGetAcceptExSockaddrs),
+		                             &dwBytes, NULL, NULL))
+		{
+			return FALSE;
+		}
+	}
+
+	sockaddr_in* pClient = NULL, *pLocal = NULL;
+	int nAddrLen = sizeof(sockaddr_in);
+
+	lpfnGetAcceptExSockaddrs(pDataBuffer, 0,
+	                         sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16,
+	                         (LPSOCKADDR*)&pLocal, &nAddrLen,
+	                         (LPSOCKADDR*)&pClient, &nAddrLen);
+
+	pAddrClient = pClient;
+	pAddrLocal = pLocal;
+
+	return TRUE;
+}
+
+BOOL CommonSocket::DisconnectEx(SOCKET hSocket, LPOVERLAPPED lpOverlapped, BOOL bReuse)
+{
+	static  LPFN_DISCONNECTEX lpfnDisconnectEx = NULL;
+	if (lpfnDisconnectEx == NULL)
+	{
+		DWORD dwBytes;
+		GUID GuidAddressEx = WSAID_DISCONNECTEX;
+		if (SOCKET_ERROR == WSAIoctl(hSocket, SIO_GET_EXTENSION_FUNCTION_POINTER,
+		                             &GuidAddressEx, sizeof(GuidAddressEx),
+		                             &lpfnDisconnectEx, sizeof(lpfnDisconnectEx),
+		                             &dwBytes, NULL, NULL))
+		{
+			return FALSE;
+		}
+	}
+
+	lpfnDisconnectEx(hSocket, lpOverlapped, bReuse ? TF_REUSE_SOCKET : 0, 0);
+
+	return TRUE;
+}
+
 BOOL	CommonSocket::ConnectSocketEx(SOCKET hSocket, const char* pAddr, short sPort, LPOVERLAPPED lpOverlapped)
 {
-	LPFN_CONNECTEX lpfnConnectEx = NULL;
+	static LPFN_CONNECTEX lpfnConnectEx = NULL;
 
-	DWORD dwBytes;
-	GUID GuidConnectEx = WSAID_CONNECTEX;
-	if(SOCKET_ERROR == WSAIoctl(hSocket, SIO_GET_EXTENSION_FUNCTION_POINTER,
-	                            &GuidConnectEx, sizeof(GuidConnectEx),
-	                            &lpfnConnectEx, sizeof(lpfnConnectEx),
-	                            &dwBytes, NULL, NULL))
+	if (lpfnConnectEx == NULL)
 	{
-		return FALSE;
+		DWORD dwBytes;
+		GUID GuidConnectEx = WSAID_CONNECTEX;
+		if (SOCKET_ERROR == WSAIoctl(hSocket, SIO_GET_EXTENSION_FUNCTION_POINTER,
+		                             &GuidConnectEx, sizeof(GuidConnectEx),
+		                             &lpfnConnectEx, sizeof(lpfnConnectEx),
+		                             &dwBytes, NULL, NULL))
+		{
+			return FALSE;
+		}
 	}
 
 	sockaddr_in  svrAddr;
@@ -336,8 +411,6 @@ std::string CommonSocket::IpAddrIntToStr( UINT32 dwIpAddr )
 
 BOOL CommonSocket::SetSocketKeepAlive( SOCKET hSocket, int nKeepInterval, int nKeepCount, int nKeepIdle )
 {
-	BOOL bKeepAlive = TRUE;
-	setsockopt(hSocket, SOL_SOCKET, SO_KEEPALIVE, (char*)&bKeepAlive, sizeof(bKeepAlive));
 #ifdef WIN32
 	tcp_keepalive  alive_in = { 0 }, alive_out = { 0 };
 	alive_in.keepalivetime = nKeepIdle;                // 开始首次KeepAlive探测前的TCP空闭时间
@@ -352,6 +425,8 @@ BOOL CommonSocket::SetSocketKeepAlive( SOCKET hSocket, int nKeepInterval, int nK
 		return FALSE;
 	}
 #else
+	INT32 nKeepAlive = 1;
+	setsockopt(hSocket, SOL_SOCKET, SO_KEEPALIVE, (void*)&nKeepAlive, sizeof(nKeepAlive));
 	setsockopt(hSocket, SOL_TCP, TCP_KEEPIDLE,  (void*)&nKeepIdle, sizeof(nKeepIdle));
 	setsockopt(hSocket, SOL_TCP, TCP_KEEPINTVL, (void*)&nKeepInterval, sizeof(nKeepInterval));
 	setsockopt(hSocket, SOL_TCP, TCP_KEEPCNT,   (void*)&nKeepCount, sizeof(nKeepCount));

@@ -33,25 +33,24 @@ public:
 	//标记为删除
 	void Destroy();
 
-	///判断是否被占有用
-	BOOL islock()const;
+	void UseIt();
 
-	inline void useit();
+	void Reset();
 
-	inline BOOL isDestroy() const;
+	BOOL IsLock()const;
 
-	BOOL isRelease() const;
+	BOOL IsDestroy() const;
+
+	BOOL IsRelease() const;
+
+	BOOL IsUse() const;
 
 	time_t getLastMotifyTime();
 
-	inline SharedMemoryStatus GetStatus();
+	SharedMemoryStatus GetStatus();
 
 	UINT32 GetCheckCode();
 
-	///是否在使用
-	inline BOOL isUse() const;
-
-	inline void reset();
 private:
 	UINT32					   m_CheckCode;
 	SharedMemoryStatus         m_Status;
@@ -220,7 +219,9 @@ public:
 
 	virtual ~DataWriterBase() {};
 
-	virtual BOOL SaveModifyToDB(IDBInterface* pdb) { return TRUE; };
+	virtual BOOL SaveModifyToDB(IDBInterface* pdb) = 0;
+
+	virtual UINT32 GetErrorCount() = 0;
 };
 
 template <typename T> class DataWriter : public DataWriterBase
@@ -231,11 +232,18 @@ public:
 		m_MemoryPool = NULL;
 		m_nModuleID = nModuleID;
 		m_nCount = nCount;
+		m_nErrorCount = 0;
 	}
 	~DataWriter()
 	{
 		delete m_MemoryPool;
 		m_MemoryPool = NULL;
+		m_nErrorCount = 0;
+	}
+
+	UINT32 GetErrorCount()
+	{
+		return m_nErrorCount;
 	}
 
 	/**数据库修改*/
@@ -259,7 +267,9 @@ public:
 			return false;
 		}
 
-		INT32 newtimes = 0, writetimes = 0, deletetimes = 0, releasetime = 0;
+		m_nErrorCount = 0;
+
+		INT32 nCreateCount = 0, nUpdateCount = 0, nDeleteCount = 0, nRealseCount = 0;
 		BOOL hasOprate = false;
 		///获取所有修改过的数据,getRawMemoryBlockSize会重新计算所有共享块，
 		UINT32 temblockSize = m_MemoryPool->GetRawMemoryBlockSize();
@@ -274,42 +284,58 @@ public:
 			{
 				continue;
 			}
+
 			T* pdata = m_MemoryPool->GetObjectByRawindex(r);
 			if (pdata == NULL)
 			{
+				CLog::GetInstancePtr()->LogError("SaveModifyToDB Error pData is NULL, ModuleID:[%d]--RawIndex:[%d]", m_nModuleID, r);
+				m_nErrorCount++;
 				continue;
 			}
+
 			if (pdata->GetCheckCode() != BLOCK_CHECK_CODE)
 			{
+				CLog::GetInstancePtr()->LogError("SaveModifyToDB Error Memory Crash, ModuleID:[%d]--RawIndex:[%d]", m_nModuleID, r);
+				m_nErrorCount++;
 				continue;
 			}
-			if (!pdata->isUse())
+
+			if (!pdata->IsUse())
 			{
 				continue;
 			}
 
-			if (pdata->islock())
+			if (pdata->IsLock())
 			{
 				continue;
 			}
 
-			if (pdata->isDestroy())
+			if (pdata->IsDestroy())
 			{
-				pdata->Delete(pdb);
+				if (!pdata->Delete(pdb))
+				{
+					m_nErrorCount++;
+					continue;
+				}
+
 				m_MemoryPool->DestoryObject(pdata);
 				hasOprate = true;
-				deletetimes++;
+				nDeleteCount++;
 				continue;
 			}
 			///其次回调新建
 			if (pBlock->m_bNewBlock)
 			{
 				pBlock->m_beforeTime = time(NULL);
-				pdata->Create(pdb);
+				if (!pdata->Create(pdb))
+				{
+					m_nErrorCount++;
+					continue;
+				}
 				pBlock->m_bNewBlock = false;
 				pBlock->m_afterTime = time(NULL);
 				hasOprate = true;
-				newtimes++;
+				nCreateCount++;
 				continue;
 			}
 
@@ -318,54 +344,65 @@ public:
 			lastMotifyTime = pdata->getLastMotifyTime();
 			beforeTime = pBlock->m_beforeTime;
 			afterTime = pBlock->m_afterTime;
-			BOOL needsave = false;
+			BOOL bNeedSave = false;
 			if (afterTime >= beforeTime)
 			{
 				if (lastMotifyTime > beforeTime)
 				{
-					needsave = true;
+					bNeedSave = true;
 				}
 			}
 			else
 			{
-				needsave = true;
+				bNeedSave = true;
 			}
 
-			if (needsave)
+			if (bNeedSave)
 			{
 				pBlock->m_beforeTime = time(NULL);
-				pdata->Update(pdb);
+				if (!pdata->Update(pdb))
+				{
+					m_nErrorCount++;
+					continue;
+				}
 				hasOprate = true;
-				writetimes++;
+				nUpdateCount++;
 				pBlock->m_afterTime = time(NULL);
 				continue;
 			}
 
-
-			if (pdata->isRelease())
+			if (pdata->IsRelease())
 			{
 				///释放的时候执行一次保存...如果上次没有保存成功或者，释放前修改了就再保存一次
 				if ((lastMotifyTime > 0) && (afterTime < beforeTime || lastMotifyTime > beforeTime))
 				{
 					pBlock->m_beforeTime = time(NULL);
-					pdata->Update(pdb);
+					if (!pdata->Update(pdb))
+					{
+						m_nErrorCount++;
+						continue;
+					}
 					hasOprate = true;
-					writetimes++;
-					continue;
+					nUpdateCount++;
+					pBlock->m_afterTime = time(NULL);
 				}
 				m_MemoryPool->DestoryObject(pdata);
-				releasetime++;
+				nRealseCount++;
 			}
 		}
 
-		//CLog::GetInstancePtr()->LogError("moduleid:%d write:%d new:%d desdroy:%d release:%d");
+		if(nCreateCount > 0 || nCreateCount > 0 || nUpdateCount > 0 || nDeleteCount > 0 || nRealseCount > 0 || m_nErrorCount > 0)
+		{
+			CLog::GetInstancePtr()->LogInfo("ModuleID:[%02d]--Create:[%d]--Update:[%d]--Delete:[%d]--Release:[%d]--Error:[%d]", m_nModuleID, nCreateCount, nUpdateCount, nDeleteCount, nRealseCount, m_nErrorCount);
+		}
 
 		return hasOprate;
 	}
 private:
-	SharedMemory<T>*	m_MemoryPool;///模块内存池
-	UINT32				m_nCount;///共享内存大小
-	UINT32				m_nModuleID;
+	SharedMemory<T>*    m_MemoryPool; //模块内存池
+	UINT32              m_nCount;     //共享内存大小
+	UINT32              m_nModuleID;  //模块ID
+	UINT32              m_nErrorCount;
 };
 
 #endif

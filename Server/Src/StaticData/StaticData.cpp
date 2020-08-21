@@ -32,18 +32,18 @@ BOOL CStaticData::InitDataReader()
 	m_vtDataFuncList.push_back(DataFuncNode("Data_Equip",       &CStaticData::ReadEquipInfo));
 	m_vtDataFuncList.push_back(DataFuncNode("Data_Gem",         &CStaticData::ReadGemInfo));
 	m_vtDataFuncList.push_back(DataFuncNode("Data_Partner",     &CStaticData::ReadPartnerInfo));
+	m_vtDataFuncList.push_back(DataFuncNode("Data_Mount",       &CStaticData::ReadMountInfo));
 	m_vtDataFuncList.push_back(DataFuncNode("Data_Store",       &CStaticData::ReadStoreInfo));
 	m_vtDataFuncList.push_back(DataFuncNode("Data_Combo_Skill", &CStaticData::ReadComboSkillInfo));
 	m_vtDataFuncList.push_back(DataFuncNode("Data_Skill",       &CStaticData::ReadSkillInfo));
 	m_vtDataFuncList.push_back(DataFuncNode("Data_FlyObject",   &CStaticData::ReadBulletInfo));
-
+	m_vtDataFuncList.push_back(DataFuncNode("Data_Pet",         &CStaticData::ReadPetInfo));
 
 // 	m_vtDataFuncList.push_back(DataFuncNode("Data_Language",    &CStaticData::ReadLanguage));
 // 	m_vtDataFuncList.push_back(DataFuncNode("Data_Award",       &CStaticData::ReadAwardData));
 // 	m_vtDataFuncList.push_back(DataFuncNode("Data_Func",        &CStaticData::ReadFuncInfo));
 // 	m_vtDataFuncList.push_back(DataFuncNode("Data_Func_Vip",    &CStaticData::ReadFuncVipInfo));
 // 	m_vtDataFuncList.push_back(DataFuncNode("Data_Func_Cost",   &CStaticData::ReadFuncCostInfo));
-// 	m_vtDataFuncList.push_back(DataFuncNode("Data_Pet",         &CStaticData::ReadPetInfo));
 // 	m_vtDataFuncList.push_back(DataFuncNode("Data_Task",        &CStaticData::ReadTaskInfo));
 // 	m_vtDataFuncList.push_back(DataFuncNode("Data_Buff",        &CStaticData::ReadBuffInfo));
 
@@ -54,16 +54,17 @@ BOOL CStaticData::LoadConfigData(std::string strDbFile)
 {
 	try
 	{
-		m_DBConnection.open(strDbFile.c_str());
+		CppSQLite3DB	tDBConnection;
+		tDBConnection.open(strDbFile.c_str());
 		char szSql[SQL_BUFF_LEN] = { 0 };
 		for (std::vector<DataFuncNode>::iterator itor = m_vtDataFuncList.begin(); itor != m_vtDataFuncList.end(); itor++)
 		{
 			DataFuncNode dataNode = (*itor);
 			snprintf(szSql, SQL_BUFF_LEN, "select * from %s;", dataNode.m_strTbName.c_str());
-			CppSQLite3Query Tabledatas = m_DBConnection.execQuery(szSql);
+			CppSQLite3Query Tabledatas = tDBConnection.execQuery(szSql);
 			(this->*dataNode.m_pDataFunc)(Tabledatas);
 		}
-		m_DBConnection.close();
+		tDBConnection.close();
 	}
 	catch(CppSQLite3Exception& e)
 	{
@@ -81,29 +82,29 @@ BOOL CStaticData::ReloadConfigData( std::string strTbName )
 {
 	try
 	{
-		m_DBConnection.open("Config.db");
+		CppSQLite3DB	tDBConnection;
+		tDBConnection.open("Config.db");
+		char szSql[SQL_BUFF_LEN] = { 0 };
+		for (std::vector<DataFuncNode>::iterator itor = m_vtDataFuncList.begin(); itor != m_vtDataFuncList.end(); itor++)
+		{
+			DataFuncNode dataNode = (*itor);
+			if (dataNode.m_strTbName != strTbName)
+			{
+				continue;
+			}
+
+			snprintf(szSql, SQL_BUFF_LEN, "select * from %s;", dataNode.m_strTbName.c_str());
+			CppSQLite3Query Tabledatas = tDBConnection.execQuery(szSql);
+			(this->*dataNode.m_pDataFunc)(Tabledatas);
+		}
+
+		tDBConnection.close();
 	}
 	catch(CppSQLite3Exception& e)
 	{
 		CLog::GetInstancePtr()->LogError("CConfigData::ReloadConfigData Failed!!!, Reason:%s", e.errorMessage());
 		return FALSE;
 	}
-
-	char szSql[SQL_BUFF_LEN]  = {0};
-	for(std::vector<DataFuncNode>::iterator itor = m_vtDataFuncList.begin(); itor != m_vtDataFuncList.end(); itor++)
-	{
-		DataFuncNode dataNode = (*itor);
-		if(dataNode.m_strTbName != strTbName)
-		{
-			continue;
-		}
-
-		snprintf(szSql, SQL_BUFF_LEN, "select * from %s;", dataNode.m_strTbName.c_str());
-		CppSQLite3Query Tabledatas = m_DBConnection.execQuery(szSql);
-		(this->*dataNode.m_pDataFunc)(Tabledatas);
-	}
-
-	m_DBConnection.close();
 
 	return TRUE;
 }
@@ -132,7 +133,6 @@ INT32 CStaticData::GetConstantValue(std::string& strName)
 		return itor->second;
 	}
 
-	ASSERT_FAIELD;
 	return 0;
 }
 
@@ -145,26 +145,13 @@ INT32 CStaticData::GetConstantValue(char* pszName)
 		return itor->second;
 	}
 
-	ASSERT_FAIELD;
 	return 0;
-}
-
-INT64 CStaticData::GetMoneyMaxValue(UINT32 dwMoneyID)
-{
-	if((dwMoneyID == 0) || (dwMoneyID >= m_vtMoneyList.size()))
-	{
-		ASSERT_FAIELD;
-		return 1;
-	}
-
-	return m_vtActionList.at(dwMoneyID - 1).dwMax;
 }
 
 INT64 CStaticData::GetActoinMaxValue(UINT32 dwActionID)
 {
 	if((dwActionID <= 0) || (dwActionID >= m_vtActionList.size()))
 	{
-		ASSERT_FAIELD;
 		return 1;
 	}
 
@@ -175,7 +162,6 @@ UINT32 CStaticData::GetActoinUnitTime(UINT32 dwActionID)
 {
 	if((dwActionID <= 0) || (dwActionID >= m_vtActionList.size()))
 	{
-		ASSERT_FAIELD;
 		return 1;
 	}
 
@@ -208,10 +194,6 @@ StCarrerInfo* CStaticData::GetCarrerInfo(UINT32 dwCarrerID)
 	return &itor->second;
 }
 
-BOOL CStaticData::ReadMoneyCfg(CppSQLite3Query& QueryData)
-{
-	return TRUE;
-}
 
 BOOL CStaticData::ReadActionCfg(CppSQLite3Query& QueryData)
 {
@@ -267,7 +249,9 @@ BOOL CStaticData::ReadActor(CppSQLite3Query& QueryData)
 		stValue.InitLevel   = QueryData.getIntField("Level");
 		stValue.fDefSpeed   = QueryData.getFloatField("DefSpeed");
 		stValue.fRadius     = QueryData.getFloatField("Radius");
-		int nIndex = QueryData.fieldIndex("P1");
+		stValue.dwType      = QueryData.getIntField("Type");
+		stValue.AiID        = QueryData.getIntField("AiId");
+		int nIndex          = QueryData.fieldIndex("P1");
 		for(int i = 0; i < PROPERTY_NUM; i++)
 		{
 			stValue.Propertys[i] = QueryData.getIntField(i + nIndex, 0);
@@ -288,7 +272,6 @@ StActorInfo* CStaticData::GetActorInfo(UINT32 dwActorID)
 	{
 		return &itor->second;
 	}
-	ASSERT_FAIELD;
 	return NULL;
 }
 
@@ -353,6 +336,13 @@ StCopyInfo* CStaticData::GetCopyInfo(UINT32 dwCopyID)
 		return &itor->second;
 	}
 	return NULL;
+}
+
+UINT32 CStaticData::GetCopyType(UINT32 dwCopyID)
+{
+	StCopyInfo* pCopyInfo = GetCopyInfo(dwCopyID);
+	ERROR_RETURN_VALUE(pCopyInfo != NULL, 0);
+	return pCopyInfo->dwCopyType;
 }
 
 BOOL CStaticData::ReadLanguage(CppSQLite3Query& QueryData)
@@ -436,26 +426,23 @@ BOOL CStaticData::ReadAwardData(CppSQLite3Query& QueryData)
 
 		if (strRatioDrop != "NULL")
 		{
-			UINT32 dwRatioBegin = 1;
-			UINT32 dwTempValue = 0;
 			std::vector<std::string> vtRet;
 			CommonConvert::SpliteString(strFixDrop, ")(", vtRet);
+
+			UINT32 nCheckRatio = 0;
 
 			StDropItem item;
 			for(std::vector<std::string>::size_type i = 0; i < vtRet.size(); i++)
 			{
 				ParseToDropItem(vtRet.at(i), item);
 				stValue.RatioItems.push_back(item);
-
-				dwTempValue = stValue.RatioItems[i].dwRatio;
-				stValue.RatioItems[i].dwRatio = dwRatioBegin;
-				dwRatioBegin += dwTempValue;
+				nCheckRatio += item.dwRatio;
 			}
 
-
-			stValue.RatioItems.push_back(item);
-			stValue.RatioItems[vtRet.size()].dwItemID = 0;
-			stValue.RatioItems[vtRet.size()].dwRatio = 10000;
+			if (nCheckRatio != 10000)
+			{
+				CLog::GetInstancePtr()->LogError("ReadAwardData Error: Invalid awardid :%d", stValue.dwAwardID);
+			}
 		}
 
 		if ((stValue.FixItems.size() <= 0) && (stValue.RatioItems.size() <= 0))
@@ -572,14 +559,13 @@ BOOL CStaticData::GetItemsFromAwardID(INT32 nAwardID, INT32 nCarrer, std::vector
 		}
 	}
 
-
-
+	//多次可取到同样的物品
 	for (int  cycle = 0; cycle < AwardItem.dwRatioCount; cycle++ )
 	{
 		UINT32 dwRandValue = CommonFunc::GetRandNum(0);
 		for (std::vector<StDropItem>::size_type i = 0; i < AwardItem.RatioItems.size() - 1; i++)
 		{
-			if ((dwRandValue >= AwardItem.RatioItems[i].dwRatio) && (dwRandValue < AwardItem.RatioItems[i + 1].dwRatio))
+			if (dwRandValue <= AwardItem.RatioItems[i].dwRatio)
 			{
 				tempItem.dwItemID = AwardItem.RatioItems[i].dwItemID;
 				if (AwardItem.RatioItems[i].dwItemNum[1] == AwardItem.RatioItems[i].dwItemNum[0])
@@ -596,8 +582,53 @@ BOOL CStaticData::GetItemsFromAwardID(INT32 nAwardID, INT32 nCarrer, std::vector
 					vtItemList.push_back(tempItem);
 				}
 			}
+			else
+			{
+				dwRandValue -= AwardItem.RatioItems[i].dwRatio;
+			}
 		}
 	}
+
+	//确保多次都取到不同样的物品
+	/*
+	bool UsedFlag[100] = { 0 };
+	UINT32 UsedValue = 0;
+	for (int cycle = 0; cycle < AwardItem.dwRatioCount; cycle++)
+	{
+		UINT32 dwRandValue = CommonFunc::GetRandNum(0) - UsedValue;
+		for (std::vector<StDropItem>::size_type i = 0; i < AwardItem.RatioItems.size() - 1; i++)
+		{
+			if (UsedFlag[i])
+			{
+				continue;
+			}
+
+			if (dwRandValue <= AwardItem.RatioItems[i].dwRatio)
+			{
+				tempItem.dwItemID = AwardItem.RatioItems[i].dwItemID;
+				if (AwardItem.RatioItems[i].dwItemNum[1] == AwardItem.RatioItems[i].dwItemNum[0])
+				{
+					tempItem.dwItemNum = AwardItem.RatioItems[i].dwItemNum[0];
+				}
+				else
+				{
+					tempItem.dwItemNum = AwardItem.RatioItems[i].dwItemNum[0] + CommonFunc::GetRandNum(0) % (AwardItem.RatioItems[i].dwItemNum[1] - AwardItem.RatioItems[i].dwItemNum[0] + 1);
+				}
+
+				if (tempItem.dwItemNum > 0)
+				{
+					vtItemList.push_back(tempItem);
+					UsedFlag[i] = true;
+					UsedValue += AwardItem.RatioItems[i].dwRatio;
+				}
+			}
+			else
+			{
+				dwRandValue -= AwardItem.RatioItems[i].dwRatio;
+			}
+		}
+	}
+	*/
 
 	return TRUE;
 }
@@ -666,12 +697,13 @@ BOOL CStaticData::ReadItemData(CppSQLite3Query& QueryData)
 	{
 		StItemInfo stValue;
 		stValue.dwItemID = QueryData.getIntField("Id");
-		stValue.dwItemType = QueryData.getIntField("ItemType");
+		stValue.eItemType = (EItemType)QueryData.getIntField("ItemType");
+		stValue.dwBagType = QueryData.getIntField("BagType");
 		stValue.SellID = QueryData.getIntField("SellMoneyId");
 		stValue.SellPrice = QueryData.getIntField("SellMoneyNum");
 		stValue.Quality = QueryData.getIntField("Quality");
 		stValue.StackMax = QueryData.getIntField("StackMax");
-		//stValue.UseType = QueryData.getIntField("usetype");
+		stValue.CarrerID = QueryData.getIntField("Carrer");
 		stValue.Data1 = QueryData.getIntField("Data1");
 		stValue.Data2 = QueryData.getIntField("Data2");
 		m_mapItem.insert(std::make_pair(stValue.dwItemID, stValue));
@@ -863,6 +895,7 @@ BOOL CStaticData::ReadPetInfo(CppSQLite3Query& QueryData)
 	{
 		StPetInfo stValue;
 		stValue.dwPetID = QueryData.getIntField("Id");
+		stValue.dwActorID = QueryData.getIntField("ActorId");
 		m_mapPetInfo.insert(std::make_pair(stValue.dwPetID, stValue));
 		QueryData.nextRow();
 	}
@@ -902,6 +935,33 @@ StPartnerInfo* CStaticData::GetPartnerInfo(UINT32 dwPartnerID)
 	ERROR_RETURN_NULL(dwPartnerID != 0);
 	auto itor = m_mapPartnerInfo.find(dwPartnerID);
 	if(itor != m_mapPartnerInfo.end())
+	{
+		return &itor->second;
+	}
+	return NULL;
+}
+
+BOOL CStaticData::ReadMountInfo(CppSQLite3Query& QueryData)
+{
+	m_mapMountInfo.clear();
+
+	while (!QueryData.eof())
+	{
+		StMountInfo stValue;
+		stValue.dwMountID = QueryData.getIntField("Id");
+		stValue.dwMountID = QueryData.getIntField("ActorId");
+		m_mapMountInfo.insert(std::make_pair(stValue.dwMountID, stValue));
+		QueryData.nextRow();
+	}
+
+	return TRUE;
+}
+
+StMountInfo* CStaticData::GetMountInfo(UINT32 dwMountID)
+{
+	ERROR_RETURN_NULL(dwMountID != 0);
+	auto itor = m_mapMountInfo.find(dwMountID);
+	if (itor != m_mapMountInfo.end())
 	{
 		return &itor->second;
 	}
@@ -1007,7 +1067,6 @@ BOOL CStaticData::ReadSkillEvent()
 		for (auto pEventNode = pSkillNode->first_node("ActScope"); pEventNode != NULL; pEventNode = pEventNode->next_sibling("ActScope"))
 		{
 			StSkillEvent tEvent;
-			tEvent.ActionID = 0;
 			pAttr = pEventNode->first_attribute("RangeType", strlen("RangeType"), false);
 			if (pAttr == NULL)
 			{
@@ -1030,6 +1089,30 @@ BOOL CStaticData::ReadSkillEvent()
 			}
 
 			tEvent.TrigerTime = (UINT64)(CommonConvert::StringToFloat(pAttr->value()) * 1000);
+
+			pAttr = pEventNode->first_attribute("HitActionID", strlen("HitActionID"), false);
+			if (pAttr == NULL)
+			{
+				continue;
+			}
+
+			tEvent.HitActionID = (UINT32)CommonConvert::StringToInt(pAttr->value());
+
+			pAttr = pEventNode->first_attribute("HitEffectID", strlen("HitEffectID"), false);
+			if (pAttr == NULL)
+			{
+				continue;
+			}
+
+			tEvent.HitEffect = (UINT32)CommonConvert::StringToInt(pAttr->value());
+
+			pAttr = pEventNode->first_attribute("HitDistance", strlen("HitDistance"), false);
+			if (pAttr == NULL)
+			{
+				continue;
+			}
+
+			tEvent.HitDistance = CommonConvert::StringToFloat(pAttr->value());
 
 			//////////////////////////////////////////////////////////////////////////
 			//解析子弹
@@ -1182,6 +1265,33 @@ StBulletInfo* CStaticData::GetBulletInfo(UINT32 dwBulletID)
 	ERROR_RETURN_NULL(dwBulletID != 0);
 	auto itor = m_mapBulletInfo.find(dwBulletID);
 	if (itor != m_mapBulletInfo.end())
+	{
+		return &itor->second;
+	}
+
+	return NULL;
+}
+
+BOOL CStaticData::ReadChargeInfo(CppSQLite3Query& QueryData)
+{
+	m_mapChargeInfo.clear();
+
+	while (!QueryData.eof())
+	{
+		StChargeInfo stValue;
+		stValue.dwProductID = QueryData.getIntField("Id");
+		m_mapChargeInfo.insert(std::make_pair(stValue.dwProductID, stValue));
+		QueryData.nextRow();
+	}
+
+	return TRUE;
+}
+
+StChargeInfo* CStaticData::GetChargeInfo(UINT32 dwProductID)
+{
+	ERROR_RETURN_NULL(dwProductID != 0);
+	auto itor = m_mapChargeInfo.find(dwProductID);
+	if (itor != m_mapChargeInfo.end())
 	{
 		return &itor->second;
 	}

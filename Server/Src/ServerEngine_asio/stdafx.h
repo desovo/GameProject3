@@ -7,7 +7,6 @@
 #define __STDAFX_H__
 
 #include <stdio.h>
-
 #include <map>
 #include <vector>
 #include <string>
@@ -18,13 +17,11 @@
 #include <deque>
 #include <mutex>
 
-#include "CheckMacroDefine.h"
-
 #include "Platform.h"
-
 #include "Log.h"
 #include "CommonFunc.h"
 #include "CommonConvert.h"
+#include "SpinLock.h"
 
 #endif
 

@@ -16,9 +16,9 @@ public:
 
 	BOOL		DispatchPacket(NetPacket* pNetPacket);
 
-	BOOL		OnNewConnect(CConnection* pConn);
+	BOOL		OnNewConnect(UINT32 nConnID);
 
-	BOOL		OnCloseConnect(CConnection* pConn);
+	BOOL		OnCloseConnect(UINT32 nConnID);
 public:
 	BOOL		RelayToGameServer(CProxyPlayer* pClientObj, IDataBuffer* pBuffer);
 
@@ -29,14 +29,21 @@ public:
 	UINT32      GetGameSvrConnID(UINT32 dwSvrID);
 
 	BOOL		IsServerConnID(UINT32 dwConnID);
-	//*********************消息处理定义开始******************************
+
 public:
+	//*********************消息处理定义开始******************************
 	BOOL		OnMsgGameSvrRegister(NetPacket* pPacket);
+	BOOL		OnMsgNotifyIntoSceneNtf(NetPacket* pPacket);
 	BOOL		OnMsgEnterSceneReq(NetPacket* pPacket);
 	BOOL		OnMsgBroadMessageNty(NetPacket* pPacket);
 	BOOL		OnMsgRoleLoginAck(NetPacket* pPacket);
 	BOOL		OnMsgRoleLogoutReq(NetPacket* pPacket);
 	BOOL		OnMsgKickoutNty(NetPacket* pPacket);
+	BOOL		OnMsgRemoveConnectNty(NetPacket* pPacket);
+	BOOL		OnMsgRelayToLogic(NetPacket* pPacket);
+	BOOL		OnMsgReconnectReq(NetPacket* pPacket);
+	BOOL		OnMsgReconnectAck(NetPacket* pPacket);
+	//*********************消息处理定义结束******************************
 public:
 	std::map<UINT32, UINT32> m_mapSvrIDtoConnID;
 

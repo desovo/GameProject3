@@ -36,26 +36,21 @@ BOOL CProxyMsgHandler::DispatchPacket(NetPacket* pNetPacket)
 
 	switch(pNetPacket->m_dwMsgID)
 	{
-			PROCESS_MESSAGE_ITEM(MSG_GASVR_REGTO_PROXY_REQ,			OnMsgGameSvrRegister);
-			PROCESS_MESSAGE_ITEM(MSG_BROAD_MESSAGE_NOTIFY,			OnMsgBroadMessageNty);
-			PROCESS_MESSAGE_ITEM(MSG_ENTER_SCENE_REQ,				OnMsgEnterSceneReq);
-			PROCESS_MESSAGE_ITEM(MSG_ROLE_LOGIN_ACK,				OnMsgRoleLoginAck);
-			PROCESS_MESSAGE_ITEM(MSG_ROLE_LOGOUT_REQ,				OnMsgRoleLogoutReq);
-			PROCESS_MESSAGE_ITEM(MSG_ROLE_OTHER_LOGIN_NTY,			OnMsgKickoutNty);
+			PROCESS_MESSAGE_ITEM(MSG_GASVR_REGTO_PROXY_REQ,         OnMsgGameSvrRegister);
+			PROCESS_MESSAGE_ITEM(MSG_BROAD_MESSAGE_NOTIFY,          OnMsgBroadMessageNty);
+			PROCESS_MESSAGE_ITEM(MSG_NOTIFY_INTO_SCENE,             OnMsgNotifyIntoSceneNtf);
+			PROCESS_MESSAGE_ITEM(MSG_ENTER_SCENE_REQ,               OnMsgEnterSceneReq);
+			PROCESS_MESSAGE_ITEM(MSG_ROLE_LOGIN_ACK,                OnMsgRoleLoginAck);
+			PROCESS_MESSAGE_ITEM(MSG_ROLE_LOGOUT_REQ,               OnMsgRoleLogoutReq);
+			PROCESS_MESSAGE_ITEM(MSG_ROLE_OTHER_LOGIN_NTY,          OnMsgKickoutNty);
+			PROCESS_MESSAGE_ITEM(MSG_REMOVE_CONNECT_NTY,            OnMsgRemoveConnectNty);
+			PROCESS_MESSAGE_ITEM(MSG_ROLE_LIST_REQ,                 OnMsgRelayToLogic);
+			PROCESS_MESSAGE_ITEM(MSG_ROLE_CREATE_REQ,               OnMsgRelayToLogic);
+			PROCESS_MESSAGE_ITEM(MSG_ROLE_DELETE_REQ,               OnMsgRelayToLogic);
+			PROCESS_MESSAGE_ITEM(MSG_ROLE_LOGIN_REQ,                OnMsgRelayToLogic);
+			PROCESS_MESSAGE_ITEM(MSG_ROLE_RECONNECT_REQ,            OnMsgReconnectReq);
+			PROCESS_MESSAGE_ITEM(MSG_ROLE_RECONNECT_ACK,            OnMsgReconnectAck);
 
-		case MSG_ROLE_LIST_REQ:
-		case MSG_ROLE_CREATE_REQ:
-		case MSG_ROLE_DELETE_REQ:
-		case MSG_ROLE_LOGIN_REQ:
-
-
-		case MSG_ROLE_RECONNECT_REQ:
-		{
-			//因为此时逻辑服还没有对象，需要告诉逻辑服，当前的客户端连接ID
-			pPacketHeader->dwUserData = pNetPacket->m_dwConnID;
-			RelayToLogicServer(pNetPacket->m_pDataBuffer);
-		}
-		break;
 		default:
 		{
 			if((pPacketHeader->dwMsgID >= MSG_LOGICSVR_MSGID_BEGIN) && (pPacketHeader->dwMsgID <= MSG_LOGICSVR_MSGID_END))
@@ -96,13 +91,16 @@ BOOL CProxyMsgHandler::DispatchPacket(NetPacket* pNetPacket)
 	return TRUE;
 }
 
-BOOL CProxyMsgHandler::OnNewConnect(CConnection* pConn)
+BOOL CProxyMsgHandler::OnNewConnect(UINT32 nConnID)
 {
 	return TRUE;
 }
 
-BOOL CProxyMsgHandler::OnCloseConnect(CConnection* pConn)
+BOOL CProxyMsgHandler::OnCloseConnect(UINT32 nConnID)
 {
+	CConnection* pConn = ServiceBase::GetInstancePtr()->GetConnectionByID(nConnID);
+	ERROR_RETURN_FALSE(pConn != NULL);
+
 	if(pConn->GetConnectionData() == 0)
 	{
 		return TRUE;
@@ -114,6 +112,14 @@ BOOL CProxyMsgHandler::OnCloseConnect(CConnection* pConn)
 
 	CProxyPlayer* pPlayer = CProxyPlayerMgr::GetInstancePtr()->GetByCharID(pConn->GetConnectionData());
 	ERROR_RETURN_TRUE(pPlayer != NULL);
+
+	if (pPlayer->GetGameSvrID() == 0)
+	{
+
+		return TRUE;
+	}
+
+
 
 	UINT32 dwConnID = GetGameSvrConnID(pPlayer->GetGameSvrID());
 	ERROR_RETURN_TRUE(dwConnID != 0);
@@ -191,6 +197,23 @@ BOOL CProxyMsgHandler::OnMsgGameSvrRegister(NetPacket* pPacket)
 	return TRUE;
 }
 
+BOOL CProxyMsgHandler::OnMsgNotifyIntoSceneNtf(NetPacket* pPacket)
+{
+	NotifyIntoScene Nty;
+	Nty.ParsePartialFromArray(pPacket->m_pDataBuffer->GetData(), pPacket->m_pDataBuffer->GetBodyLenth());
+	PacketHeader* pPacketHeader = (PacketHeader*)pPacket->m_pDataBuffer->GetBuffer();
+	ERROR_RETURN_TRUE(pPacketHeader->u64TargetID != 0);
+
+	RelayToConnect(pPacketHeader->dwUserData, pPacket->m_pDataBuffer);
+
+	CProxyPlayer* pPlayer = CProxyPlayerMgr::GetInstancePtr()->GetByCharID(Nty.roleid());
+	ERROR_RETURN_TRUE(pPlayer != NULL);
+
+	pPlayer->SetGameSvrInfo(Nty.serverid(), Nty.copyguid());
+
+	return TRUE;
+}
+
 BOOL CProxyMsgHandler::OnMsgEnterSceneReq(NetPacket* pNetPacket)
 {
 	EnterSceneReq Req;
@@ -201,13 +224,10 @@ BOOL CProxyMsgHandler::OnMsgEnterSceneReq(NetPacket* pNetPacket)
 	CProxyPlayer* pPlayer = CProxyPlayerMgr::GetInstancePtr()->GetByCharID(Req.roleid());
 	ERROR_RETURN_TRUE(pPlayer != NULL);
 
-	pPlayer->SetGameSvrInfo(Req.serverid(), Req.copyguid());
-
 	UINT32 dwConnID = GetGameSvrConnID(Req.serverid());
 	ERROR_RETURN_TRUE(dwConnID != 0)
 	pPacketHeader->u64TargetID = pNetPacket->m_dwConnID;
 	RelayToConnect(dwConnID, pNetPacket->m_pDataBuffer);
-	RelayToLogicServer(pNetPacket->m_pDataBuffer);
 	return TRUE;
 }
 
@@ -231,7 +251,15 @@ BOOL CProxyMsgHandler::OnMsgRoleLoginAck(NetPacket* pPacket)
 	ERROR_RETURN_TRUE(pPacketHeader != NULL);
 	CConnection* pConnection = ServiceBase::GetInstancePtr()->GetConnectionByID(pPacketHeader->dwUserData);
 	ERROR_RETURN_TRUE(pConnection != NULL);
+
+	if (pPacketHeader->u64TargetID == 0)
+	{
+		RelayToConnect(pPacketHeader->dwUserData, pPacket->m_pDataBuffer);
+		return TRUE;
+	}
+
 	pConnection->SetConnectionData(pPacketHeader->u64TargetID);
+
 	RelayToConnect(pPacketHeader->dwUserData, pPacket->m_pDataBuffer);
 
 	CProxyPlayer* pPlayer = CProxyPlayerMgr::GetInstancePtr()->GetByCharID(pPacketHeader->u64TargetID);
@@ -252,7 +280,7 @@ BOOL CProxyMsgHandler::OnMsgRoleLogoutReq(NetPacket* pPacket)
 
 	RelayToLogicServer(pPacket->m_pDataBuffer);
 
-	CConnection* pConnection = ServiceBase::GetInstancePtr()->GetConnectionByID(pPacketHeader->dwUserData);
+	CConnection* pConnection = ServiceBase::GetInstancePtr()->GetConnectionByID(pPacket->m_dwConnID);
 	ERROR_RETURN_TRUE(pConnection != NULL);
 	pConnection->SetConnectionData(0);
 	return TRUE;
@@ -269,6 +297,80 @@ BOOL CProxyMsgHandler::OnMsgKickoutNty(NetPacket* pPacket)
 	{
 		pConn->SetConnectionData(0);
 	}
+
+	return TRUE;
+}
+
+BOOL CProxyMsgHandler::OnMsgRemoveConnectNty(NetPacket* pPacket)
+{
+	RemoveConnectNty Nty;
+	Nty.ParsePartialFromArray(pPacket->m_pDataBuffer->GetData(), pPacket->m_pDataBuffer->GetBodyLenth());
+	PacketHeader* pPacketHeader = (PacketHeader*)pPacket->m_pDataBuffer->GetBuffer();
+
+	CProxyPlayerMgr::GetInstancePtr()->RemoveByCharID(Nty.roleid());
+
+	return TRUE;
+}
+
+BOOL CProxyMsgHandler::OnMsgRelayToLogic(NetPacket* pPacket)
+{
+	PacketHeader* pPacketHeader = (PacketHeader*)pPacket->m_pDataBuffer->GetBuffer();
+	ERROR_RETURN_FALSE(pPacketHeader != NULL);
+
+	pPacketHeader->dwUserData = pPacket->m_dwConnID;
+	RelayToLogicServer(pPacket->m_pDataBuffer);
+
+	return TRUE;
+}
+
+BOOL CProxyMsgHandler::OnMsgReconnectReq(NetPacket* pPacket)
+{
+	PacketHeader* pPacketHeader = (PacketHeader*)pPacket->m_pDataBuffer->GetBuffer();
+	ERROR_RETURN_FALSE(pPacketHeader != NULL);
+
+	CProxyPlayer* pPlayer = CProxyPlayerMgr::GetInstancePtr()->GetByCharID(pPacketHeader->u64TargetID);
+	if (pPlayer != NULL)
+	{
+		ERROR_RETURN_FALSE(pPlayer->GetConnID() != pPacket->m_dwConnID);
+		CConnection* pConn = ServiceBase::GetInstancePtr()->GetConnectionByID(pPlayer->GetConnID());
+		if (pConn != NULL)
+		{
+			CLog::GetInstancePtr()->LogError("CProxyMsgHandler::OnMsgReconnectReq Error orgin connect alreay exist:%d", pPlayer->GetConnID());
+			pConn->SetConnectionData(0);
+		}
+	}
+
+	pPacketHeader->dwUserData = pPacket->m_dwConnID;
+
+	RelayToLogicServer(pPacket->m_pDataBuffer);
+
+	return TRUE;
+}
+
+BOOL CProxyMsgHandler::OnMsgReconnectAck(NetPacket* pPacket)
+{
+	PacketHeader* pPacketHeader = (PacketHeader*)pPacket->m_pDataBuffer->GetBuffer();
+	ERROR_RETURN_TRUE(pPacketHeader != NULL);
+	CConnection* pConnection = ServiceBase::GetInstancePtr()->GetConnectionByID(pPacketHeader->dwUserData);
+	ERROR_RETURN_TRUE(pConnection != NULL);
+
+	if (pPacketHeader->u64TargetID == 0)
+	{
+		RelayToConnect(pPacketHeader->dwUserData, pPacket->m_pDataBuffer);
+		return TRUE;
+	}
+
+	pConnection->SetConnectionData(pPacketHeader->u64TargetID);
+
+	RelayToConnect(pPacketHeader->dwUserData, pPacket->m_pDataBuffer);
+
+	CProxyPlayer* pPlayer = CProxyPlayerMgr::GetInstancePtr()->GetByCharID(pPacketHeader->u64TargetID);
+	if (pPlayer == NULL)
+	{
+		pPlayer = CProxyPlayerMgr::GetInstancePtr()->CreateProxyPlayer(pPacketHeader->u64TargetID);
+	}
+
+	pPlayer->SetConnID(pPacketHeader->dwUserData);
 
 	return TRUE;
 }

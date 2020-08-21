@@ -18,9 +18,7 @@ BOOL SceneLogic_City::OnObjectCreate(CSceneObject* pObject)
 {
 	if(pObject->GetObjType() == OT_PLAYER)
 	{
-		ERROR_RETURN_TRUE(pObject->m_dwCamp < m_vtBornPos.size());
-		ERROR_RETURN_TRUE(pObject->m_dwCamp > 0);
-		pObject->SetPos(m_vtBornPos[pObject->m_dwCamp].m_x, m_vtBornPos[pObject->m_dwCamp].m_y, m_vtBornPos[pObject->m_dwCamp].m_z);
+		SceneLogicBase::OnObjectCreate(pObject);
 	}
 	return TRUE;
 }
@@ -39,17 +37,36 @@ BOOL SceneLogic_City::OnPlayerEnter(CSceneObject* pPlayer)
 	return TRUE;
 }
 
-BOOL SceneLogic_City::OnPlayerLeave(CSceneObject* pPlayer)
+BOOL SceneLogic_City::OnPlayerLeave(CSceneObject* pPlayer, BOOL bDisConnect)
 {
+	m_pScene->BroadRemoveObject(pPlayer);
+	m_pScene->DeletePlayer(pPlayer->GetObjectGUID());
+	//在主城里下线，宠物和伙伴也应该清除
+
+	CSceneObject* pPet = m_pScene->GetSceneObject(pPlayer->m_uPetGuid);
+	if (pPet != NULL)
+	{
+		m_pScene->BroadRemoveObject(pPet);
+		m_pScene->DeleteMonster(pPlayer->m_uPetGuid);
+	}
+
+	CSceneObject* pPartner = m_pScene->GetSceneObject(pPlayer->m_uPartnerGuid);
+	if (pPartner != NULL)
+	{
+		m_pScene->BroadRemoveObject(pPartner);
+		m_pScene->DeleteMonster(pPlayer->m_uPartnerGuid);
+	}
+
 	return TRUE;
 }
 
 BOOL SceneLogic_City::Update(UINT64 uTick)
 {
+
 	return TRUE;
 }
 
-BOOL SceneLogic_City::TimeUP()
+BOOL SceneLogic_City::OnTimeUP()
 {
 	return TRUE;
 }

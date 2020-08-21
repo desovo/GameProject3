@@ -8,12 +8,17 @@
 #include "../Message/Game_Define.pb.h"
 #include "RoleModule.h"
 #include "SimpleManager.h"
-#include "../ServerData/ServerDefine.h"
+#include "ServerDefine.h"
 #include "GlobalDataMgr.h"
 #include "../StaticData/StaticData.h"
 #include "BagModule.h"
-#include "../ServerData/RoleData.h"
+#include "RoleData.h"
 #include "PartnerModule.h"
+#include "MsgHandlerManager.h"
+#include "LoginCodeMgr.h"
+#include "GameLogManager.h"
+#include "../Message/Msg_Role.pb.h"
+#include "../Message/Msg_Account.pb.h"
 
 CLogicMsgHandler::CLogicMsgHandler()
 {
@@ -27,37 +32,21 @@ CLogicMsgHandler::~CLogicMsgHandler()
 
 BOOL CLogicMsgHandler::Init(UINT32 dwReserved)
 {
-
+	RegisterMessageHanler();
 
 	return TRUE;
 }
 
 BOOL CLogicMsgHandler::Uninit()
 {
+	CPlayerManager::GetInstancePtr()->ReleaseAll();
+
 	return TRUE;
 }
 
 BOOL CLogicMsgHandler::OnUpdate(UINT64 uTick)
 {
-	if (CPlayerManager::GetInstancePtr()->GetCount() > 0)
-	{
-		CPlayerManager::TNodeTypePtr pNode = CPlayerManager::GetInstancePtr()->MoveFirst();
-		ERROR_RETURN_FALSE(pNode != NULL);
-
-		CPlayerObject* pTempObj = NULL;
-		for (; pNode != NULL; pNode = CPlayerManager::GetInstancePtr()->MoveNext(pNode))
-		{
-			pTempObj = pNode->GetValue();
-			ERROR_RETURN_FALSE(pTempObj != NULL);
-
-			if (pTempObj->IsOnline())
-			{
-				pTempObj->NotifyChange();
-			}
-		}
-	}
-
-	CPlayerManager::GetInstancePtr()->TryCleanPlayer();
+	CPlayerManager::GetInstancePtr()->OnUpdate(uTick);
 
 	return TRUE;
 }
@@ -67,42 +56,23 @@ BOOL CLogicMsgHandler::OnSecondTimer()
 	return TRUE;
 }
 
-BOOL CLogicMsgHandler::DispatchPacket(NetPacket* pNetPacket)
+VOID CLogicMsgHandler::RegisterMessageHanler()
 {
-	switch(pNetPacket->m_dwMsgID)
-	{
-			PROCESS_MESSAGE_ITEM(MSG_SELECT_SERVER_REQ,		OnMsgSelectServerReq);
-			PROCESS_MESSAGE_ITEM(MSG_ROLE_LIST_REQ,			OnMsgRoleListReq);
-			PROCESS_MESSAGE_ITEM(MSG_ROLE_LIST_ACK,			OnMsgRoleListAck);
-			PROCESS_MESSAGE_ITEM(MSG_ROLE_CREATE_REQ,		OnMsgRoleCreateReq);
-			PROCESS_MESSAGE_ITEM(MSG_ROLE_DELETE_REQ,		OnMsgRoleDeleteReq);
-			PROCESS_MESSAGE_ITEM(MSG_ROLE_LOGIN_REQ,		OnMsgRoleLoginReq);
-			PROCESS_MESSAGE_ITEM(MSG_ROLE_LOGIN_ACK,		OnMsgRoleLoginAck);
-			PROCESS_MESSAGE_ITEM(MSG_ROLE_LOGOUT_REQ,		OnMsgRoleLogoutReq);
-			PROCESS_MESSAGE_ITEM(MSG_DISCONNECT_NTY,		OnMsgRoleDisconnect);
-			PROCESS_MESSAGE_ITEM(MSG_COPY_ABORT_REQ,		OnMsgAbortCopyReq);
-			PROCESS_MESSAGE_ITEM(MSG_MAIN_COPY_REQ,			OnMsgMainCopyReq);
-			PROCESS_MESSAGE_ITEM(MSG_BACK_TO_CITY_REQ,		OnMsgBackToCityReq);
-			PROCESS_MESSAGE_ITEM(MSG_LOGIC_REGTO_LOGIN_ACK,	OnMsgRegToLoginAck);
-			PROCESS_MESSAGE_ITEM(MSG_CHAT_MESSAGE_REQ,		OnMsgChatMessageReq);
-			PROCESS_MESSAGE_ITEM(MSG_ROLE_RECONNECT_REQ,	OnMsgReconnectReq);
-			PROCESS_MESSAGE_ITEM(MSG_TEST_ADD_ITEM,			OnMsgTestAddItemReq);
-			PROCESS_MESSAGE_ITEM(MSG_PHP_GM_COMMAND_REQ,	OnMsgWebCommandReq);
-	}
-
-
-	PacketHeader* pHeader = (PacketHeader*)pNetPacket->m_pDataBuffer->GetBuffer();
-	CPlayerObject* pPlayer = CPlayerManager::GetInstancePtr()->GetPlayer(pHeader->u64TargetID);
-	ERROR_RETURN_FALSE(pPlayer != NULL);
-	if (pPlayer->DispatchPacket(pNetPacket))
-	{
-		return TRUE;
-	}
-
-	return FALSE;
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_SELECT_SERVER_REQ, &CLogicMsgHandler::OnMsgSelectServerReq, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_ROLE_LIST_REQ, &CLogicMsgHandler::OnMsgRoleListReq, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_ROLE_LIST_ACK, &CLogicMsgHandler::OnMsgRoleListAck, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_ROLE_CREATE_REQ, &CLogicMsgHandler::OnMsgRoleCreateReq, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_ROLE_DELETE_REQ, &CLogicMsgHandler::OnMsgRoleDeleteReq, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_ROLE_LOGIN_REQ, &CLogicMsgHandler::OnMsgRoleLoginReq, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_ROLE_LOGIN_ACK, &CLogicMsgHandler::OnMsgRoleLoginAck, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_ROLE_LOGOUT_REQ, &CLogicMsgHandler::OnMsgRoleLogoutReq, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_DISCONNECT_NTY, &CLogicMsgHandler::OnMsgRoleDisconnect, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_ABORT_SCENE_NTF, &CLogicMsgHandler::OnMsgAbortSceneNtf, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_MAIN_COPY_REQ, &CLogicMsgHandler::OnMsgMainCopyReq, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_BACK_TO_CITY_REQ, &CLogicMsgHandler::OnMsgBackToCityReq, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_CHAT_MESSAGE_REQ, &CLogicMsgHandler::OnMsgChatMessageReq, this);
+	CMsgHandlerManager::GetInstancePtr()->RegisterMessageHandle(MSG_ROLE_RECONNECT_REQ, &CLogicMsgHandler::OnMsgReconnectReq, this);
 }
-
-
 
 BOOL CLogicMsgHandler::OnMsgSelectServerReq(NetPacket* pNetPacket)
 {
@@ -110,10 +80,12 @@ BOOL CLogicMsgHandler::OnMsgSelectServerReq(NetPacket* pNetPacket)
 	Req.ParsePartialFromArray(pNetPacket->m_pDataBuffer->GetData(), pNetPacket->m_pDataBuffer->GetBodyLenth());
 	PacketHeader* pHeader = (PacketHeader*)pNetPacket->m_pDataBuffer->GetBuffer();
 	ERROR_RETURN_TRUE(pHeader->dwUserData != 0);
+	ERROR_RETURN_TRUE(Req.accountid() != 0);
 	SelectServerAck Ack;
 	Ack.set_serverid(CGameService::GetInstancePtr()->GetServerID());
-	Ack.set_logincode(12345678);
+	Ack.set_logincode(CLoginCodeManager::GetInstancePtr()->CreateLoginCode(Req.accountid()));
 	Ack.set_retcode(MRC_SUCCESSED);
+	Ack.set_accountid(Req.accountid());
 	return ServiceBase::GetInstancePtr()->SendMsgProtoBuf(pNetPacket->m_dwConnID, MSG_SELECT_SERVER_ACK, 0, pHeader->dwUserData, Ack);
 }
 
@@ -124,7 +96,18 @@ BOOL CLogicMsgHandler::OnMsgRoleListReq(NetPacket* pNetPacket)
 	ERROR_RETURN_TRUE(Req.accountid() != 0);
 	PacketHeader* pHeader = (PacketHeader*)pNetPacket->m_pDataBuffer->GetBuffer();
 	ERROR_RETURN_TRUE(pHeader->dwUserData != 0);
+
+	if(!CLoginCodeManager::GetInstancePtr()->CheckLoginCode(Req.accountid(), Req.logincode()))
+	{
+// 		RoleListAck Ack;
+// 		Ack.set_retcode(MRC_ILLEGAL_LOGIN_REQ);
+// 		return ServiceBase::GetInstancePtr()->SendMsgProtoBuf(pNetPacket->m_dwConnID, MSG_ROLE_LIST_ACK, 0, pHeader->dwUserData, Ack);
+
+		//还需要通知网关断开这个连结
+	}
+
 	ServiceBase::GetInstancePtr()->SendMsgProtoBuf(CGameService::GetInstancePtr()->GetDBConnID(),  MSG_ROLE_LIST_REQ, pNetPacket->m_dwConnID, pHeader->dwUserData, Req);
+
 	return TRUE;
 }
 
@@ -153,7 +136,7 @@ BOOL CLogicMsgHandler::OnMsgRoleListAck(NetPacket* pNetPacket)
 
 		for (int j = 0; j < Ack.rolelist_size(); j++)
 		{
-			const RoleItem &item = Ack.rolelist(j);
+			const RoleItem& item = Ack.rolelist(j);
 			if (item.roleid() == uRoleID)
 			{
 				bFind = TRUE;
@@ -162,12 +145,12 @@ BOOL CLogicMsgHandler::OnMsgRoleListAck(NetPacket* pNetPacket)
 		}
 
 		//表示没有找到,这时候,就只能从内存中来取了
-		if (!bFind) 
+		if (!bFind)
 		{
-			CPlayerObject *pPlayer = CPlayerManager::GetInstancePtr()->GetPlayer(uRoleID);
+			CPlayerObject* pPlayer = CPlayerManager::GetInstancePtr()->GetPlayer(uRoleID);
 			ERROR_RETURN_TRUE(pPlayer != NULL);
 
-			CRoleModule *pRoleModule = (CRoleModule*)pPlayer->GetModuleByType(MT_ROLE);
+			CRoleModule* pRoleModule = (CRoleModule*)pPlayer->GetModuleByType(MT_ROLE);
 			ERROR_RETURN_TRUE(pRoleModule != NULL);
 
 			RoleItem* pNode = Ack.add_rolelist();
@@ -177,7 +160,7 @@ BOOL CLogicMsgHandler::OnMsgRoleListAck(NetPacket* pNetPacket)
 			pNode->set_level(pRoleModule->m_pRoleDataObject->m_Level);
 		}
 	}
-	
+
 	return ServiceBase::GetInstancePtr()->SendMsgProtoBuf((UINT32)pHeader->u64TargetID, MSG_ROLE_LIST_ACK, 0, pHeader->dwUserData, Ack);
 }
 
@@ -201,7 +184,7 @@ BOOL CLogicMsgHandler::OnMsgRoleCreateReq(NetPacket* pNetPacket)
 
 	if (CSimpleManager::GetInstancePtr()->CheckNameExist(Req.name()))
 	{
-		Ack.set_retcode(MRC_NAME_EXIST);
+		Ack.set_retcode(MRC_ROLE_NAME_EXIST);
 		ServiceBase::GetInstancePtr()->SendMsgProtoBuf(pNetPacket->m_dwConnID, MSG_ROLE_CREATE_ACK, 0, pHeader->dwUserData, Ack);
 		return TRUE;
 	}
@@ -226,9 +209,12 @@ BOOL CLogicMsgHandler::OnMsgRoleCreateReq(NetPacket* pNetPacket)
 	pRoleModule->InitBaseData(u64RoleID, Req.name(), Req.carrer(), Req.accountid(), Req.channel());
 	pPlayer->OnCreate(u64RoleID);
 
+	CGameLogManager::GetInstancePtr()->LogRoleCreate(pPlayer);
+
 	Ack.set_retcode(MRC_SUCCESSED);
 	Ack.set_roleid(u64RoleID);
 	ServiceBase::GetInstancePtr()->SendMsgProtoBuf(pNetPacket->m_dwConnID,  MSG_ROLE_CREATE_ACK, 0, pHeader->dwUserData, Ack);
+
 	return TRUE;
 }
 
@@ -249,12 +235,17 @@ BOOL CLogicMsgHandler::OnMsgRoleDeleteReq(NetPacket* pNetPacket)
 	}
 	else
 	{
-
+		ServiceBase::GetInstancePtr()->SendMsgProtoBuf(CGameService::GetInstancePtr()->GetDBConnID(), MSG_ROLE_DELETE_REQ, 0, 0, Req);
 	}
 
 	RoleDeleteAck Ack;
 	Ack.set_retcode(MRC_SUCCESSED);
-	return ServiceBase::GetInstancePtr()->SendMsgProtoBuf(pNetPacket->m_dwConnID, MSG_ROLE_DELETE_REQ, pHeader->u64TargetID, 0, Ack);
+	return ServiceBase::GetInstancePtr()->SendMsgProtoBuf(pNetPacket->m_dwConnID, MSG_ROLE_DELETE_ACK, pHeader->u64TargetID, 0, Ack);
+}
+
+BOOL CLogicMsgHandler::OnMsgRoleDeleteAck(NetPacket* pNetPacket)
+{
+	return TRUE;
 }
 
 BOOL CLogicMsgHandler::OnMsgRoleLoginReq(NetPacket* pNetPacket)
@@ -264,9 +255,20 @@ BOOL CLogicMsgHandler::OnMsgRoleLoginReq(NetPacket* pNetPacket)
 	PacketHeader* pHeader = (PacketHeader*)pNetPacket->m_pDataBuffer->GetBuffer();
 	ERROR_RETURN_TRUE(pHeader->dwUserData != 0);
 	ERROR_RETURN_TRUE(Req.roleid() != 0);
+
+	CSimpleInfo* pSimpleInfo = CSimpleManager::GetInstancePtr()->GetSimpleInfoByID(Req.roleid());
+	if (pSimpleInfo == NULL || pSimpleInfo->m_uAccountID != Req.accountid())
+	{
+		RoleLoginAck Ack;
+		Ack.set_retcode(MRC_INVALID_ROLEID); //无效的角色ID
+		ServiceBase::GetInstancePtr()->SendMsgProtoBuf(pNetPacket->m_dwConnID, MSG_ROLE_LOGIN_ACK, 0, pHeader->dwUserData, Ack);
+		return TRUE;
+	}
+
 	CPlayerObject* pPlayer = CPlayerManager::GetInstancePtr()->GetPlayer(Req.roleid());
 	if(pPlayer == NULL)
 	{
+		ERROR_RETURN_TRUE(CGameService::GetInstancePtr()->GetDBConnID() != 0);
 		ServiceBase::GetInstancePtr()->SendMsgProtoBuf(CGameService::GetInstancePtr()->GetDBConnID(), MSG_ROLE_LOGIN_REQ, pNetPacket->m_dwConnID, pHeader->dwUserData, Req);
 		return TRUE;
 	}
@@ -280,27 +282,19 @@ BOOL CLogicMsgHandler::OnMsgRoleLoginReq(NetPacket* pNetPacket)
 		//还需要通知玩家被人挤走了
 
 		pPlayer->SendMsgRawData(MSG_ROLE_OTHER_LOGIN_NTY, NULL, 0);
-		if(pPlayer->m_dwCopyGuid != 0)
+		if(pPlayer->m_bMainCity)
 		{
 			//表示明确己登录到其它的副本
 			pPlayer->SendLeaveScene(pPlayer->m_dwCopyGuid, pPlayer->m_dwCopySvrID);
 		}
-		else
-		{
-			CLog::GetInstancePtr()->LogError("玩家还没有主动登录副本,就又重新进入了");
-			if(pPlayer->m_dwToCopyGuid != 0)
-			{
-				pPlayer->SendLeaveScene(pPlayer->m_dwToCopyGuid, pPlayer->m_dwToCopySvrID);
-			}
-		}
+
 		pPlayer->SetConnectID(0, 0);
-		pPlayer->ClearCopyState();
+		pPlayer->ClearCopyStatus();
 		pPlayer->OnLogout();
 	}
 
 	pPlayer->SetConnectID(pNetPacket->m_dwConnID, pHeader->dwUserData);
 	pPlayer->OnLogin();
-	pPlayer->OnAllModuleOK();
 	return TRUE;
 }
 
@@ -311,12 +305,20 @@ BOOL CLogicMsgHandler::OnMsgRoleLoginAck(NetPacket* pNetPacket)
 	PacketHeader* pHeader = (PacketHeader*)pNetPacket->m_pDataBuffer->GetBuffer();
 	ERROR_RETURN_TRUE(pHeader->dwUserData != 0);
 	ERROR_RETURN_TRUE(Ack.roleid() != 0);
+
+	if (Ack.retcode() != MRC_SUCCESSED)
+	{
+		RoleLoginAck Ack;
+		Ack.set_retcode(Ack.retcode());
+		ServiceBase::GetInstancePtr()->SendMsgProtoBuf((UINT32)pHeader->u64TargetID, MSG_ROLE_LOGIN_ACK, 0, pHeader->dwUserData, Ack);
+		return TRUE;
+	}
+
 	CPlayerObject* pPlayer = CPlayerManager::GetInstancePtr()->CreatePlayer(Ack.roleid());
 	pPlayer->Init(Ack.roleid());
 	pPlayer->SetConnectID((UINT32)pHeader->u64TargetID, pHeader->dwUserData);
 	pPlayer->ReadFromDBLoginData(Ack);
 	pPlayer->OnLogin();
-	pPlayer->OnAllModuleOK();
 	return TRUE;
 }
 
@@ -335,10 +337,14 @@ BOOL CLogicMsgHandler::OnMsgRoleLogoutReq(NetPacket* pNetPacket)
 
 	ERROR_RETURN_TRUE(pPlayer->m_dwCopyID != 0);
 	ERROR_RETURN_TRUE(pPlayer->m_dwCopyGuid != 0);
-	pPlayer->SendLeaveScene(pPlayer->m_dwCopyGuid, pPlayer->m_dwCopySvrID);
+
+	if (pPlayer->m_bMainCity)
+	{
+		pPlayer->SendLeaveScene(pPlayer->m_dwCopyGuid, pPlayer->m_dwCopySvrID);
+	}
 
 	pPlayer->SetConnectID(0, 0);
-	pPlayer->ClearCopyState();
+	pPlayer->ClearCopyStatus();
 
 	return TRUE;
 }
@@ -359,14 +365,9 @@ BOOL CLogicMsgHandler::OnMsgRoleDisconnect(NetPacket* pNetPacket)
 		return TRUE;
 	}
 
-	if((pPlayer->m_dwCopyGuid != 0) && (pPlayer->m_dwCopySvrID != 0))
-	{
-		pPlayer->SendLeaveScene(pPlayer->m_dwCopyGuid, pPlayer->m_dwCopySvrID);
-	}
-
 	pPlayer->OnLogout();
 	pPlayer->SetConnectID(0, 0);
-	pPlayer->ClearCopyState();
+	pPlayer->ClearCopyStatus();
 
 	return TRUE;
 }
@@ -380,7 +381,6 @@ BOOL CLogicMsgHandler::OnMsgMainCopyReq(NetPacket* pNetPacket)
 
 	CPlayerObject* pPlayer = CPlayerManager::GetInstancePtr()->GetPlayer(pHeader->u64TargetID);
 	ERROR_RETURN_TRUE(pPlayer != NULL);
-	ERROR_RETURN_TRUE(pPlayer->m_dwToCopyID == 0);
 	ERROR_RETURN_TRUE(Req.copyid() != 0);
 
 	StCopyInfo* pCopyInfo = CStaticData::GetInstancePtr()->GetCopyInfo(Req.copyid());
@@ -394,35 +394,30 @@ BOOL CLogicMsgHandler::OnMsgMainCopyReq(NetPacket* pNetPacket)
 		pPlayer->SendMsgProtoBuf(MSG_MAIN_COPY_ACK, Ack);
 	}
 
-	ERROR_RETURN_TRUE(CGameSvrMgr::GetInstancePtr()->CreateScene(Req.copyid(), pHeader->u64TargetID, 1, pCopyInfo->dwCopyType));
+	ERROR_RETURN_TRUE(CGameSvrMgr::GetInstancePtr()->TakeCopyRequest( pHeader->u64TargetID, 1, Req.copyid(), pCopyInfo->dwCopyType));
+
 	return TRUE;
 }
 
-BOOL CLogicMsgHandler::OnMsgAbortCopyReq(NetPacket* pNetPacket)
+BOOL CLogicMsgHandler::OnMsgAbortSceneNtf(NetPacket* pNetPacket)
 {
-	AbortCopyReq Req;
-	Req.ParsePartialFromArray(pNetPacket->m_pDataBuffer->GetData(), pNetPacket->m_pDataBuffer->GetBodyLenth());
+	AbortSceneNty Ntf;
+	Ntf.ParsePartialFromArray(pNetPacket->m_pDataBuffer->GetData(), pNetPacket->m_pDataBuffer->GetBodyLenth());
 	PacketHeader* pHeader = (PacketHeader*)pNetPacket->m_pDataBuffer->GetBuffer();
-	ERROR_RETURN_TRUE(pHeader->u64TargetID != 0);
-
-	CPlayerObject* pPlayer = CPlayerManager::GetInstancePtr()->GetPlayer(pHeader->u64TargetID);
+	CPlayerObject* pPlayer = CPlayerManager::GetInstancePtr()->GetPlayer(Ntf.roleid());
 	ERROR_RETURN_TRUE(pPlayer != NULL);
-	ERROR_RETURN_TRUE(pPlayer->m_dwCopyID == Req.copyid());
-	ERROR_RETURN_TRUE(pPlayer->m_dwCopyGuid == Req.copyguid());
-	ERROR_RETURN_TRUE(pPlayer->m_dwToCopyID == 0);
-	ERROR_RETURN_TRUE(pPlayer->m_dwToCopyGuid == 0);
-	pPlayer->SendLeaveScene(pPlayer->m_dwCopyGuid, pPlayer->m_dwCopySvrID);
+	ERROR_RETURN_TRUE(pPlayer->m_dwCopyID == Ntf.copyid());
+	ERROR_RETURN_TRUE(pPlayer->m_dwCopyGuid == Ntf.copyguid());
 
-	CGameSvrMgr::GetInstancePtr()->SendPlayerToMainCity(pHeader->u64TargetID, pPlayer->GetCityCopyID());
+	pPlayer->ClearCopyStatus();
 
-	pPlayer->m_dwCopyID = 0;
-	pPlayer->m_dwCopyGuid = 0;
-	pPlayer->m_dwCopySvrID = 0;
+	CGameSvrMgr::GetInstancePtr()->SendPlayerToMainCity(Ntf.roleid(), pPlayer->GetCityCopyID());
+
 	return TRUE;
 }
 
-BOOL CLogicMsgHandler::OnMsgBackToCityReq( NetPacket* pNetPacket )
-{ 
+BOOL CLogicMsgHandler::OnMsgBackToCityReq(NetPacket* pNetPacket)
+{
 	BackToCityReq Req;
 	Req.ParsePartialFromArray(pNetPacket->m_pDataBuffer->GetData(), pNetPacket->m_pDataBuffer->GetBodyLenth());
 	PacketHeader* pHeader = (PacketHeader*)pNetPacket->m_pDataBuffer->GetBuffer();
@@ -430,21 +425,10 @@ BOOL CLogicMsgHandler::OnMsgBackToCityReq( NetPacket* pNetPacket )
 
 	CPlayerObject* pPlayer = CPlayerManager::GetInstancePtr()->GetPlayer(pHeader->u64TargetID);
 	ERROR_RETURN_TRUE(pPlayer != NULL);
-	ERROR_RETURN_TRUE(pPlayer->m_dwToCopyID == 0);
-	ERROR_RETURN_TRUE(pPlayer->m_dwToCopyGuid == 0);
-	pPlayer->SendLeaveScene(pPlayer->m_dwCopyGuid, pPlayer->m_dwCopySvrID);
+
+	pPlayer->ClearCopyStatus();
 
 	CGameSvrMgr::GetInstancePtr()->SendPlayerToMainCity(pHeader->u64TargetID, pPlayer->GetCityCopyID());
-	pPlayer->m_dwCopyID = 0;
-	pPlayer->m_dwCopyGuid = 0;
-	return TRUE;
-}
-
-BOOL CLogicMsgHandler::OnMsgRegToLoginAck(NetPacket* pNetPacket)
-{
-	LogicRegToLoginAck Ack;
-	Ack.ParsePartialFromArray(pNetPacket->m_pDataBuffer->GetData(), pNetPacket->m_pDataBuffer->GetBodyLenth());
-	PacketHeader* pHeader = (PacketHeader*)pNetPacket->m_pDataBuffer->GetBuffer();
 
 	return TRUE;
 }
@@ -456,80 +440,47 @@ BOOL CLogicMsgHandler::OnMsgChatMessageReq(NetPacket* pNetPacket)
 	PacketHeader* pHeader = (PacketHeader*)pNetPacket->m_pDataBuffer->GetBuffer();
 	ERROR_RETURN_TRUE(pHeader->u64TargetID != 0);
 
-    BOOL bEnableGm = CStaticData::GetInstancePtr()->GetConstantValue("Enable_Gm");
+	BOOL bEnableGm = CStaticData::GetInstancePtr()->GetConstantValue("Enable_Gm");
 	if(bEnableGm && (Req.content().size() > 2) && (Req.content().at(0) == '@') && (Req.content().at(1) == '@'))
 	{
 		std::vector<std::string> vtParam;
 		CommonConvert::SpliteString(Req.content(), " ", vtParam);
 		ProcessGMCommand(pHeader->u64TargetID, vtParam);
-	}
-	else
-	{
-		switch(Req.channel())
-		{
-			case CHL_WORLD:
-			{
-
-			}
-			break;
-			case CHL_PRIVATE:
-			{
-
-			}
-			break;
-			case CHL_GUILD:
-			{
-
-			}
-			break;
-			default:
-				break;
-		}
+		return TRUE;
 	}
 
-
-	return TRUE;
-}
-
-BOOL CLogicMsgHandler::ProcessGMCommand(UINT64 u64ID, std::vector<std::string>& vtParam)
-{
-	CPlayerObject* pPlayer = CPlayerManager::GetInstancePtr()->GetPlayer(u64ID);
+	CPlayerObject* pPlayer = CPlayerManager::GetInstancePtr()->GetPlayer(pHeader->u64TargetID);
 	ERROR_RETURN_TRUE(pPlayer != NULL);
-	ERROR_RETURN_TRUE(vtParam.size() >= 1);
 
-	if(std::strcmp(vtParam[0].c_str(), "@@additem") == 0)
+	//以下是走聊天逻辑
+	//如果条件不够返回错误码
+	//ChatMessageAck Ack;
+	//Ack.set_retcode(xxx);
+	//pPlayer->SendMsgProtoBuf(MSG_CHAT_MESSAGE_ACK, Ack);
+
+	switch(Req.channel())
 	{
-		ERROR_RETURN_TRUE(vtParam.size() >= 3);
-		CBagModule* pBag = (CBagModule*)pPlayer->GetModuleByType(MT_BAG);
-		ERROR_RETURN_TRUE(pBag != NULL);
-		pBag->AddItem(CommonConvert::StringToInt(vtParam[1].c_str()), CommonConvert::StringToInt(vtParam[2].c_str()));
-	}
-	else if(vtParam[0].compare("@@AddPartner") == 0)
-	{
-		CPartnerModule *pPartnerModule = (CPartnerModule*)pPlayer->GetModuleByType(MT_PARTNER);
-		ERROR_RETURN_TRUE(pPartnerModule != NULL);
-		
-		for (int i = 0; i < 20; i++)
+		case CHL_WORLD:
 		{
-			pPartnerModule->AddPartner(i + 1);
+			CPlayerManager::GetInstancePtr()->BroadMessageToAll(MSG_CHAT_MESSAGE_NTY, Req);
 		}
+		break;
+		case CHL_PRIVATE:
+		{
+			CPlayerObject* pTarget = CPlayerManager::GetInstancePtr()->GetPlayer(Req.targetid());
+			ERROR_RETURN_TRUE(pTarget != NULL);
+			pTarget->SendMsgProtoBuf(MSG_CHAT_MESSAGE_NTY, Req);
+		}
+		break;
+		case CHL_GUILD:
+		{
+
+		}
+		break;
+		default:
+			break;
 	}
 
-	return TRUE;
-}
-
-
-BOOL CLogicMsgHandler::OnMsgTestAddItemReq(NetPacket* pNetPacket)
-{
-	ChatMessageReq Req;
-	Req.ParsePartialFromArray(pNetPacket->m_pDataBuffer->GetData(), pNetPacket->m_pDataBuffer->GetBodyLenth());
-	PacketHeader* pHeader = (PacketHeader*)pNetPacket->m_pDataBuffer->GetBuffer();
-
-	CPlayerObject* pPlayer = CPlayerManager::GetInstancePtr()->GetPlayer(Req.srcid());
-	ERROR_RETURN_TRUE(pPlayer != NULL);
-	CBagModule* pBag = (CBagModule*)pPlayer->GetModuleByType(MT_BAG);
-	ERROR_RETURN_TRUE(pBag != NULL);
-	//pBag->AddItem(Req.guildid(), 1);
 	return TRUE;
 }
 
@@ -540,6 +491,8 @@ BOOL CLogicMsgHandler::OnMsgReconnectReq( NetPacket* pNetPacket )
 	PacketHeader* pHeader = (PacketHeader*)pNetPacket->m_pDataBuffer->GetBuffer();
 	ERROR_RETURN_TRUE(pHeader->dwUserData != 0);
 	CPlayerObject* pPlayer = CPlayerManager::GetInstancePtr()->GetPlayer(Req.roleid());
+
+	RoleReconnectAck Ack;
 	if(pPlayer == NULL)
 	{
 		//重连失败，请重新登录
@@ -557,11 +510,12 @@ BOOL CLogicMsgHandler::OnMsgReconnectReq( NetPacket* pNetPacket )
 
 	pPlayer->SetConnectID(pNetPacket->m_dwConnID, pHeader->dwUserData);
 
-	CGameSvrMgr::GetInstancePtr()->SendPlayerToMainCity(pPlayer->GetObjectID(), pPlayer->GetCityCopyID());
+	pPlayer->ClearCopyStatus();
 
-	pPlayer->m_dwCopyID = 0;
+	CGameSvrMgr::GetInstancePtr()->SendPlayerToMainCity(pPlayer->GetRoleID(), pPlayer->GetCityCopyID());
 
-	pPlayer->m_dwCopyGuid = 0;
+
 
 	return TRUE;
 }
+

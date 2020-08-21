@@ -2,8 +2,8 @@
 #include "BuffObject.h"
 #include "../Message/Game_Define.pb.h"
 #include "TimerManager.h"
-#include "../StaticData/StaticData.h"
-#include "../StaticData/StaticStruct.h"
+#include "StaticData.h"
+#include "StaticStruct.h"
 #include "SceneObject.h"
 #include "LuaManager.h"
 
@@ -31,9 +31,7 @@ BOOL CBuffObject::OnAddBuff()
 {
 	ERROR_RETURN_FALSE(m_pBuffInfo != NULL);
 
-	m_pSceneObject->m_dwObjectStatus |= m_pBuffInfo->ChangeStatus;
-
-	m_pSceneObject->m_dwBuffStatus |= m_pBuffInfo->BuffEffect;
+	m_pSceneObject->m_dwStatus |= m_pBuffInfo->ChangeStatus;
 
 	OnEffect(TRUE);
 
@@ -49,9 +47,7 @@ BOOL CBuffObject::OnRemoveBuff()
 {
 	ERROR_RETURN_FALSE(m_pBuffInfo != NULL);
 
-	m_pSceneObject->m_dwObjectStatus &= ~m_pBuffInfo->ChangeStatus;
-
-	m_pSceneObject->m_dwBuffStatus &= ~m_pBuffInfo->BuffEffect;
+	m_pSceneObject->m_dwStatus &= ~m_pBuffInfo->ChangeStatus;
 
 	for(int i = 0; i < PROPERTY_NUM; i++)
 	{
@@ -116,4 +112,8 @@ BOOL CBuffObject::IsOver()
 	return m_bOver;
 }
 
+VOID CBuffObject::SetOver()
+{
+	m_bOver = TRUE;
+}
 

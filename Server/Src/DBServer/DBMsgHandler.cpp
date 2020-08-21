@@ -5,17 +5,7 @@
 #include "DataBuffer.h"
 #include "../Message/Msg_ID.pb.h"
 #include "../Message/Msg_RetCode.pb.h"
-
-
-Th_RetName _DBWorkThread(void* pParam)
-{
-	CDBMsgHandler* pHandler = (CDBMsgHandler*)pParam;
-
-	pHandler->Run();
-
-	return Th_RetValue;
-}
-
+#include "../Message/Msg_Role.pb.h"
 
 CDBMsgHandler::CDBMsgHandler()
 {
@@ -33,12 +23,9 @@ BOOL CDBMsgHandler::Init(UINT32 dwReserved)
 
 	//m_bRun = TRUE;
 
-	//m_hThread = CommonThreadFunc::CreateThread(_DBWorkThread, this);
+	//m_pThread = new std::thread(&CDBMsgHandler::Run, this);
 
-	//if (m_hThread != NULL)
-	//{
-	//	return TRUE;
-	//}
+	//ERROR_RETURN_FALSE(m_pThread != NULL);
 
 	return TRUE;
 }
@@ -67,18 +54,25 @@ BOOL CDBMsgHandler::Run()
 
 BOOL CDBMsgHandler::Uninit()
 {
+	m_bRun = FALSE;
+
+//     m_pThread->join();
+//
+//     delete m_pThread;
+//
+//     m_pThread = NULL;
+
 	m_DBManager.Uninit();
 
 	return TRUE;
 }
 
-
 BOOL CDBMsgHandler::AddPacket(NetPacket* pNetPacket)
 {
 	m_PacketQueue.push(pNetPacket);
+
 	return TRUE;
 }
-
 
 BOOL CDBMsgHandler::DispatchPacket(NetPacket* pNetPacket)
 {
@@ -86,9 +80,9 @@ BOOL CDBMsgHandler::DispatchPacket(NetPacket* pNetPacket)
 	{
 			PROCESS_MESSAGE_ITEM(MSG_ROLE_LIST_REQ,			OnMsgRoleListReq);
 			PROCESS_MESSAGE_ITEM(MSG_ROLE_LOGIN_REQ,		OnMsgRoleLoginReq);
+			PROCESS_MESSAGE_ITEM(MSG_ROLE_DELETE_REQ,       OnMsgRoleDeleteReq);
 			PROCESS_MESSAGE_ITEM(MSG_DB_EXE_SQL_REQ,		OnMsgExeSqlReq);
 	}
-
 
 	return FALSE;
 }
@@ -118,7 +112,16 @@ BOOL CDBMsgHandler::OnMsgRoleLoginReq(NetPacket* pPacket)
 	DBRoleLoginAck Ack;
 	Ack.set_retcode(MRC_SUCCESSED);
 	Ack.set_roleid(Req.roleid());
-	m_DBManager.GetRoleData(Req.roleid(),		Ack);
+
+	//一个角色其它的数据可能都没有，但角色基本信息必须有
+	if (!m_DBManager.GetRoleData(Req.roleid(), Ack))
+	{
+		Ack.set_retcode(MRC_INVALID_ROLEID);
+		Ack.set_roleid(Req.roleid());
+		ServiceBase::GetInstancePtr()->SendMsgProtoBuf(pPacket->m_dwConnID, MSG_ROLE_LOGIN_ACK, pHeader->u64TargetID, pHeader->dwUserData, Ack);
+		return TRUE;
+	}
+
 	m_DBManager.GetBagData(Req.roleid(),		Ack);
 	m_DBManager.GetCopyData(Req.roleid(),		Ack);
 	m_DBManager.GetEquipData(Req.roleid(),		Ack);
@@ -132,7 +135,18 @@ BOOL CDBMsgHandler::OnMsgRoleLoginReq(NetPacket* pPacket)
 	m_DBManager.GetCounterData(Req.roleid(),	Ack);
 	m_DBManager.GetFriendData(Req.roleid(),		Ack);
 	m_DBManager.GetSkillData(Req.roleid(),		Ack);
-	return ServiceBase::GetInstancePtr()->SendMsgProtoBuf(pPacket->m_dwConnID,  MSG_ROLE_LOGIN_ACK, pHeader->u64TargetID, pHeader->dwUserData, Ack);
+	ServiceBase::GetInstancePtr()->SendMsgProtoBuf(pPacket->m_dwConnID,  MSG_ROLE_LOGIN_ACK, pHeader->u64TargetID, pHeader->dwUserData, Ack);
+
+	return TRUE;
+}
+
+BOOL CDBMsgHandler::OnMsgRoleDeleteReq(NetPacket* pPacket)
+{
+	RoleDeleteReq Req;
+	Req.ParsePartialFromArray(pPacket->m_pDataBuffer->GetData(), pPacket->m_pDataBuffer->GetBodyLenth());
+	PacketHeader* pHeader = (PacketHeader*)pPacket->m_pDataBuffer->GetBuffer();
+
+	return TRUE;
 }
 
 BOOL CDBMsgHandler::OnMsgExeSqlReq(NetPacket* pPacket)

@@ -29,7 +29,7 @@ public:
 
 	BOOL	ReadFromShareMemory(BagDataObject* pObject);
 
-	BOOL	DispatchPacket(NetPacket* pNetPacket);
+	VOID	RegisterMessageHanler();
 public:
 	BOOL	AddItem(UINT32 dwItemID, INT64 nCount);
 	BOOL	RemoveItem(UINT32 dwItemID, INT64 nCount);
@@ -46,9 +46,6 @@ public:
 
 public:
 	std::map<UINT64, BagDataObject*>m_mapBagData;
-
-	std::set<UINT64> m_setChange;
-	std::set<UINT64> m_setRemove;
 };
 
 #endif //__BAG_MODULE_H__

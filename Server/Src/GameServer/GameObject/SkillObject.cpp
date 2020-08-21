@@ -1,10 +1,10 @@
 ﻿#include "stdafx.h"
 #include "SkillObject.h"
 #include "SceneObject.h"
-#include "../StaticData/StaticStruct.h"
-#include "../StaticData/StaticData.h"
+#include "StaticStruct.h"
+#include "StaticData.h"
 #include "../Message/Game_Define.pb.h"
-#include "../StaticData/StaticStruct.h"
+#include "StaticStruct.h"
 #include "../Scene.h"
 #include "../Message/Msg_ID.pb.h"
 
@@ -30,7 +30,6 @@ BOOL CSkillObject::OnUpdate( UINT64 uTick )
 
 	if (m_dwSkillID == 0 || m_pSkillInfo == NULL || m_pSkillEventInfo == NULL)
 	{
-		ASSERT_FAIELD;
 		return TRUE;
 	}
 
@@ -162,25 +161,33 @@ BOOL CSkillObject::AddTargetObject(CSceneObject* pObject)
 	return TRUE;
 }
 
-BOOL CSkillObject::AttackTarget(CSceneObject* pTarget)
+INT32 CSkillObject::GetTargetNum()
+{
+	return (INT32)m_vtTargets.size();
+}
+
+BOOL CSkillObject::AttackTarget(CSceneObject* pTarget, UINT32 HitActionID, UINT32 HitEffectID, FLOAT HitDistance)
 {
 	ERROR_RETURN_FALSE(m_pCastObject != NULL);
 	ERROR_RETURN_FALSE(m_pSkillInfo != NULL);
 	ERROR_RETURN_FALSE(pTarget != NULL);
+
+	CScene* pScene = m_pCastObject->GetScene();
+	ERROR_RETURN_FALSE(pScene != NULL);
 
 	UINT32 dwRandValue = CommonFunc::GetRandNum(1);
 	//先判断是否命中
 	if (dwRandValue > (8000 + m_pCastObject->m_Propertys[EA_HIT_RATE] - pTarget->m_Propertys[EA_DODGE]) && dwRandValue > 5000)
 	{
 		//未命中
-		m_pCastObject->NotifyHitEffect(pTarget, FALSE, 0);
+		pScene->AddHitEffect(m_pCastObject->GetObjectGUID(), pTarget->GetObjectGUID(), 0, FALSE, HitActionID, HitEffectID, HitDistance);
 		return TRUE;
 	}
 
 	//判断是否爆击
 	dwRandValue = CommonFunc::GetRandNum(1);
 	BOOL bCriticalHit = FALSE;
-	if (dwRandValue < (m_pCastObject->m_Propertys[EA_CRIT_HIT] - m_pCastObject->m_Propertys[EA_CRIT_DEF]) || dwRandValue < 100)
+	if (dwRandValue < (m_pCastObject->m_Propertys[EA_CRIT_HIT] - pTarget->m_Propertys[EA_CRIT_DEF]) || dwRandValue < 100)
 	{
 		bCriticalHit = TRUE;
 	}
@@ -210,9 +217,9 @@ BOOL CSkillObject::AttackTarget(CSceneObject* pTarget)
 		nHurt = nHurt * 3 / 2;
 	}
 
-	pTarget->SubHp(nHurt);
+	pTarget->ChangeHp(-nHurt);
 
-	m_pCastObject->NotifyHitEffect(pTarget, bCriticalHit, -nHurt);
+	pScene->AddHitEffect(m_pCastObject->GetObjectGUID(), pTarget->GetObjectGUID(), -nHurt, bCriticalHit, HitActionID, HitEffectID, HitDistance);
 
 	return TRUE;
 }
@@ -259,7 +266,7 @@ BOOL CSkillObject::ProcessSkillEvent(StSkillEvent& SkillEvent)
 			pTempObject->AddBuff(SkillEvent.TargetBuffID);
 		}
 
-		AttackTarget(pTempObject);
+		AttackTarget(pTempObject, SkillEvent.HitActionID, SkillEvent.HitEffect, SkillEvent.HitDistance);
 	}
 
 	if (SkillEvent.vtBullets.size() > 0)

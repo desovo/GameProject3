@@ -7,7 +7,7 @@
 #include "../Message/Msg_ID.pb.h"
 #include "../Message/Msg_RetCode.pb.h"
 #include "BagModule.h"
-#include "../ServerData/GemData.h"
+#include "GemData.h"
 #include "../ServerEngine/PacketHeader.h"
 
 CGemModule::CGemModule(CPlayerObject* pOwner): CModuleBase(pOwner)
@@ -16,6 +16,7 @@ CGemModule::CGemModule(CPlayerObject* pOwner): CModuleBase(pOwner)
 	{
 		m_vtDressGem[i] = NULL;
 	}
+	RegisterMessageHanler();
 }
 
 CGemModule::~CGemModule()
@@ -112,7 +113,7 @@ UINT64 CGemModule::AddGem(UINT32 dwGemID)
 	GemDataObject* pObject = DataPool::CreateObject<GemDataObject>(ESD_GEM, TRUE);
 	pObject->Lock();
 	pObject->m_GemID = dwGemID;
-	pObject->m_uRoleID = m_pOwnPlayer->GetObjectID();
+	pObject->m_uRoleID = m_pOwnPlayer->GetRoleID();
 	pObject->m_uGuid   = CGlobalDataManager::GetInstancePtr()->MakeNewGuid();
 	pObject->m_StrengthLvl = 0;
 	pObject->m_RefineExp = 0;
@@ -123,7 +124,7 @@ UINT64 CGemModule::AddGem(UINT32 dwGemID)
 
 	m_mapGemData.insert(std::make_pair(pObject->m_uGuid, pObject));
 
-	m_setChange.insert(pObject->m_uGuid);
+	AddChangeID(pObject->m_uGuid);
 
 	return pObject->m_uGuid;
 }
@@ -205,7 +206,7 @@ UINT32 CGemModule::UnDressGem(UINT64 uGuid)
 	pObject->Lock();
 	pObject->m_EquipPos = 0;
 	pObject->Unlock();
-	m_setChange.insert(pObject->m_uGuid);
+	AddChangeID(pObject->m_uGuid);
 
 	CBagModule* pBagModule = (CBagModule*)m_pOwnPlayer->GetModuleByType(MT_BAG);
 	if (pBagModule == NULL)
@@ -282,7 +283,7 @@ UINT32 CGemModule::DressGem(UINT64 uGuid, UINT64 uBagGuid, INT32 EquipPos)
 		m_vtDressGem[dwTargetPos]->Lock();
 		m_vtDressGem[dwTargetPos]->m_EquipPos = 0;
 		m_vtDressGem[dwTargetPos]->Unlock();
-		m_setChange.insert(m_vtDressGem[dwTargetPos]->m_uGuid);
+		AddChangeID(m_vtDressGem[dwTargetPos]->m_uGuid);
 		pBagModule->SetBagItem(uBagGuid, m_vtDressGem[dwTargetPos]->m_uGuid, m_vtDressGem[dwTargetPos]->m_GemID, 1);
 	}
 	else
@@ -294,7 +295,7 @@ UINT32 CGemModule::DressGem(UINT64 uGuid, UINT64 uBagGuid, INT32 EquipPos)
 	pObject->m_EquipPos = EquipPos;
 	pObject->Unlock();
 	m_vtDressGem[dwTargetPos] = pObject;
-	m_setChange.insert(pObject->m_uGuid);
+	AddChangeID(pObject->m_uGuid);
 
 	return MRC_SUCCESSED;
 }
@@ -326,13 +327,8 @@ BOOL CGemModule::CalcFightValue(INT32 nValue[PROPERTY_NUM], INT32 nPercent[PROPE
 	return TRUE;
 }
 
-BOOL CGemModule::DispatchPacket(NetPacket* pNetPacket)
+VOID CGemModule::RegisterMessageHanler()
 {
-	switch (pNetPacket->m_dwMsgID)
-	{
-			PROCESS_MESSAGE_ITEM(MSG_SETUP_GEM_REQ,		OnMsgSetupGemReq);
-			PROCESS_MESSAGE_ITEM(MSG_UNSET_GEM_REQ,		OnMsgUnsetGemReq);
-	}
-
-	return FALSE;
+	m_pOwnPlayer->m_NetMessagePump.RegisterMessageHandle(MSG_SETUP_GEM_REQ, &CGemModule::OnMsgSetupGemReq, this);
+	m_pOwnPlayer->m_NetMessagePump.RegisterMessageHandle(MSG_UNSET_GEM_REQ, &CGemModule::OnMsgUnsetGemReq, this);
 }

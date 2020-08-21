@@ -9,19 +9,14 @@ namespace CommonSocket
 BOOL		SetSocketReuseable(SOCKET hSocket);
 
 //设置套接字为非阻塞状态
-BOOL		SetSocketUnblock(SOCKET hSocket);
-
-//设置套接字为阻塞状态
-BOOL		SetSocketBlock(SOCKET hSocket);
+BOOL		SetSocketBlock(SOCKET hSocket, BOOL bBlock);
 
 BOOL		SetSocketNoDelay(SOCKET hSocket);
 
 BOOL		SetSocketKeepAlive( SOCKET hSocket, int nKeepInterval, int nKeepCount, int nKeepIdle );
 
-//初始化网络
 BOOL		InitNetwork();
 
-//反初始化网络
 BOOL		UninitNetwork();
 
 SOCKET		CreateSocket( int af = AF_INET, int type = SOCK_STREAM, int protocol = 0);
@@ -36,19 +31,13 @@ INT32		GetSocketLastError();
 
 BOOL		IsSocketValid(SOCKET hSocket);
 
-//关闭套接字发送
 void		ShutDownSend(SOCKET hSocket);
 
-//关闭套接字接收
 void		ShutDownRecv(SOCKET hSocket);
 
-//关闭套接字
 void		CloseSocket(SOCKET hSocket);
 
-//取本机IP地址
 std::string GetLocalIP();
-
-std::string GetLastErrorStr(INT32 nError);
 
 UINT32		IpAddrStrToInt(CHAR* pszIpAddr);
 
@@ -58,10 +47,22 @@ std::string IpAddrIntToStr(UINT32 dwIpAddr);
 
 BOOL		SetSocketBuffSize(SOCKET hSocket, INT32 nRecvSize, INT32 nSendSize);
 
+std::string GetRemoteIP(SOCKET hSocket);
+
+UINT32      HostToNet(UINT32 nValue);
+
+UINT32      NetToHost(UINT32 nValue);
+
+VOID        IgnoreSignal();
+
 #ifdef WIN32
 BOOL		ConnectSocketEx(SOCKET hSocket, const char* pAddr, short sPort, LPOVERLAPPED lpOverlapped);
 
-BOOL		AcceptSocketEx(SOCKET hListenSocket, LPOVERLAPPED lpOverlapped);
+BOOL		AcceptSocketEx(SOCKET hListenSocket, SOCKET hAcceptSocket, CHAR* pBuff, LPOVERLAPPED lpOverlapped);
+
+BOOL        GetSocketAddress(SOCKET hSocket, CHAR* pDataBuffer, sockaddr_in*& pAddrClient, sockaddr_in*& pAddrLocal);
+
+BOOL        DisconnectEx(SOCKET hSocket, LPOVERLAPPED lpOverlapped, BOOL bReuse);
 #endif
 }
 

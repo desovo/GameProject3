@@ -1,8 +1,8 @@
 ﻿#ifndef __EQUIPMENT_MODULE_H__
 #define __EQUIPMENT_MODULE_H__
 #include "ModuleBase.h"
-#include "../ServerData/EquipData.h"
-#include "../ServerData/ServerDefine.h"
+#include "EquipData.h"
+#include "ServerDefine.h"
 #include "../Message/Game_Define.pb.h"
 struct EquipDataObject;
 class CEquipModule  : public CModuleBase
@@ -29,7 +29,7 @@ public:
 
 	BOOL CalcFightValue(INT32 nValue[PROPERTY_NUM], INT32 nPercent[PROPERTY_NUM], INT32& FightValue);
 
-	BOOL DispatchPacket(NetPacket* pNetPacket);
+	VOID RegisterMessageHanler();
 
 public:
 	UINT64 AddEquip(UINT32 dwEquipID);
@@ -52,11 +52,6 @@ public:
 public:
 	std::map<UINT64, EquipDataObject*>m_mapEquipData;
 	EquipDataObject* m_vtDressEquip[EQUIP_MAX_NUM];
-
-	std::set<UINT64> m_setChange;
-	std::set<UINT64> m_setRemove;
-
-
 };
 
 #endif //__EQUIPMENT_MODULE_H__

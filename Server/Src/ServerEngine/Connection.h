@@ -2,13 +2,14 @@
 #define _CONNECTION_H_
 
 #include "IBufferHandler.h"
-#include "CritSec.h"
 #include "LockFreeQueue.h"
 
-#define  NET_MSG_RECV				1
-#define  NET_MSG_SEND				2
-#define  NET_MSG_CONNECT			3
-#define  NET_MSG_POST				4
+#define  NET_OP_RECV				1
+#define  NET_OP_SEND				2
+#define  NET_OP_CONNECT				3
+#define  NET_OP_ACCEPT				4
+#define  NET_OP_POST				5
+#define  NET_OP_UDP_RECV            6
 
 #define RECV_BUF_SIZE               8192
 #define MAX_BUFF_SIZE				32768
@@ -22,7 +23,7 @@ struct NetIoOperatorData
 #ifdef WIN32
 	OVERLAPPED		Overlap;
 #endif
-	UINT32			dwCmdType;
+	UINT32			dwOpType;
 	UINT32			dwConnID;
 
 	IDataBuffer*	pDataBuffer;
@@ -35,6 +36,7 @@ class CConnection
 public:
 	CConnection();
 	virtual ~CConnection();
+
 public:
 	BOOL	HandleRecvEvent(UINT32 dwBytes);
 
@@ -70,10 +72,12 @@ public:
 
 	BOOL	CheckHeader(CHAR* m_pPacket);
 
-public:
-	SOCKET						m_hSocket;
+	UINT32  GetIpAddr(BOOL bHost = TRUE);
 
-	BOOL						m_bConnected;
+public:
+	SOCKET                      m_hSocket;
+
+	BOOL                        m_bConnected;
 
 	NetIoOperatorData			m_IoOverlapRecv;
 
@@ -96,15 +100,13 @@ public:
 	UINT32						m_pCurBufferSize;
 	UINT32						m_nCheckNo;
 
+	volatile BOOL				m_IsSending;
+
 	CConnection*                m_pNext;
 
 	UINT64						m_LastRecvTick;
 
 	ArrayLockFreeQueue < IDataBuffer* > m_SendBuffList;
-
-
-
-	BOOL				        m_IsSending;
 
 	//LINUX下专用， 用于发了一半的包
 	IDataBuffer*				m_pSendingBuffer;
@@ -129,7 +131,9 @@ public:
 
 	BOOL		    DeleteConnection(CConnection* pConnection);
 
-	CConnection*    GetConnectionByConnID(UINT32 dwConnID);
+	BOOL            DeleteConnection(UINT32 nConnID);
+
+	CConnection*    GetConnectionByID(UINT32 dwConnID);
 
 	///////////////////////////////////////////
 	BOOL		    CloseAllConnection();
@@ -143,7 +147,7 @@ public:
 	CConnection*				m_pFreeConnRoot;
 	CConnection*				m_pFreeConnTail;
 	std::vector<CConnection*>	m_vtConnList;            //连接列表
-	CCritSec					m_CritSecConnList;
+	std::mutex					m_ConnListMutex;
 };
 
 #endif

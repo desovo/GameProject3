@@ -4,17 +4,16 @@
 #include "DBInterface/CppMysql.h"
 #include "LockFreeQueue.h"
 
-Th_RetName _SaveAccountThread( void* pParam );
-
 struct CAccountObject
 {
-	UINT64		m_ID;
+	UINT64      m_ID = 0;
 	std::string m_strName;
 	std::string m_strPassword;
-	UINT32      m_dwLastSvrID;
-	UINT32      m_dwChannel;	//渠道ID
-	UINT64		m_uSealTime;    //封禁结束时间
-	UINT64      m_uCreateTime;  //创建时间
+	UINT32      m_dwLastSvrID[2] = {0};
+	UINT32      m_dwChannel = 0;	//渠道ID
+	UINT64      m_uSealTime = 0;    //封禁结束时间
+	UINT64      m_uCreateTime = 0;  //创建时间
+	INT32       m_nLoginCount = 0;
 };
 
 
@@ -33,13 +32,15 @@ public:
 
 	BOOL				ReleaseAccountObject(UINT64 m_u64AccountID);
 
-	BOOL				SealAccount(UINT64 m_uAccountID, const std::string& strName, UINT32 dwChannel, BOOL bSeal, UINT32 dwSealTime);
+	BOOL				SealAccount(UINT64 uAccountID, const std::string& strName, UINT32 dwChannel, BOOL bSeal, UINT32 dwSealTime);
+
+	BOOL				SetLastServer(UINT64 uAccountID, INT32 ServerID);
 
 	CAccountObject*		AddAccountObject(UINT64 u64ID, const CHAR* pStrName, UINT32 dwChannel);
 
 	CAccountObject*		GetAccountObject(const std::string& name, UINT32 dwChannel);
 
-	BOOL				SaveAccountChange();
+	BOOL				SaveAccountThread();
 
 	BOOL				Init();
 
@@ -47,17 +48,17 @@ public:
 
 	BOOL				IsRun();
 
+	BOOL                CheckAccountName(const std::string& strName, bool bFromChannel);
+
 public:
 
 	std::map<std::string, CAccountObject*>	m_mapNameObj;
 
 	ArrayLockFreeQueue<CAccountObject*>		m_ArrChangedAccount;
 
-	CppMySQL3DB 		m_DBConnection;
-
 	BOOL				m_IsRun;
 
-	HANDLE				m_hThread;
+	std::thread*  		m_pThread;
 
 	UINT64				m_u64MaxID;
 

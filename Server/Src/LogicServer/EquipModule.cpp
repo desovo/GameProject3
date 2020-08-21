@@ -15,6 +15,7 @@ CEquipModule::CEquipModule(CPlayerObject* pOwner): CModuleBase(pOwner)
 	{
 		m_vtDressEquip[i] = NULL;
 	}
+	RegisterMessageHanler();
 }
 
 CEquipModule::~CEquipModule()
@@ -102,6 +103,8 @@ BOOL CEquipModule::SaveToClientLoginData(RoleLoginAck& Ack)
 		pItem->set_starexp(pObject->m_StarExp);
 		pItem->set_isusing(pObject->m_IsUsing);
 	}
+	m_setChange.clear();
+	m_setRemove.clear();
 
 	return TRUE;
 }
@@ -111,7 +114,7 @@ UINT64 CEquipModule::AddEquip(UINT32 dwEquipID)
 	EquipDataObject* pObject = DataPool::CreateObject<EquipDataObject>(ESD_EQUIP, TRUE);
 	pObject->Lock();
 	pObject->m_EquipID = dwEquipID;
-	pObject->m_uRoleID = m_pOwnPlayer->GetObjectID();
+	pObject->m_uRoleID = m_pOwnPlayer->GetRoleID();
 	pObject->m_uGuid   = CGlobalDataManager::GetInstancePtr()->MakeNewGuid();
 	pObject->m_StrengthLvl = 0;
 	pObject->m_RefineExp = 0;
@@ -122,7 +125,7 @@ UINT64 CEquipModule::AddEquip(UINT32 dwEquipID)
 
 	m_mapEquipData.insert(std::make_pair(pObject->m_uGuid, pObject));
 
-	m_setChange.insert(pObject->m_uGuid);
+	AddChangeID(pObject->m_uGuid);
 
 	return pObject->m_uGuid;
 }
@@ -202,7 +205,7 @@ UINT32 CEquipModule::UnDressEquip(UINT64 uGuid)
 	pObject->Lock();
 	pObject->m_IsUsing = FALSE;
 	pObject->Unlock();
-	m_setChange.insert(pObject->m_uGuid);
+	AddChangeID(pObject->m_uGuid);
 	m_vtDressEquip[pInfo->dwPos - 1] = NULL;
 
 	CBagModule* pBagModule = (CBagModule*)m_pOwnPlayer->GetModuleByType(MT_BAG);
@@ -213,7 +216,7 @@ UINT32 CEquipModule::UnDressEquip(UINT64 uGuid)
 
 	pBagModule->AddItem(pObject->m_uGuid, pObject->m_EquipID, 1);
 
-	m_pOwnPlayer->SendObjectChangeNtf(1, pInfo->dwPos, 0, "");
+	m_pOwnPlayer->SendPlayerChange(ECT_EQUIP, pInfo->dwPos, 0, "");
 
 	return MRC_SUCCESSED;
 }
@@ -248,7 +251,7 @@ UINT32 CEquipModule::DressEquip(UINT64 uGuid, UINT64 uBagGuid)
 		m_vtDressEquip[pInfo->dwPos - 1]->Lock();
 		m_vtDressEquip[pInfo->dwPos - 1]->m_IsUsing = FALSE;
 		m_vtDressEquip[pInfo->dwPos - 1]->Unlock();
-		m_setChange.insert(m_vtDressEquip[pInfo->dwPos - 1]->m_uGuid);
+		AddChangeID(m_vtDressEquip[pInfo->dwPos - 1]->m_uGuid);
 		pBagModule->SetBagItem(uBagGuid, m_vtDressEquip[pInfo->dwPos - 1]->m_uGuid, m_vtDressEquip[pInfo->dwPos - 1]->m_EquipID, 1);
 	}
 	else
@@ -260,9 +263,9 @@ UINT32 CEquipModule::DressEquip(UINT64 uGuid, UINT64 uBagGuid)
 	pObject->m_IsUsing = TRUE;
 	pObject->Unlock();
 	m_vtDressEquip[pInfo->dwPos - 1] = pObject;
-	m_setChange.insert(pObject->m_uGuid);
+	AddChangeID(pObject->m_uGuid);
 
-	m_pOwnPlayer->SendObjectChangeNtf(1, pInfo->dwPos, pObject->m_EquipID, "");
+	m_pOwnPlayer->SendPlayerChange(ECT_EQUIP, pInfo->dwPos, pObject->m_EquipID, "");
 
 	return MRC_SUCCESSED;
 }
@@ -294,15 +297,10 @@ BOOL CEquipModule::CalcFightValue(INT32 nValue[PROPERTY_NUM], INT32 nPercent[PRO
 	return TRUE;
 }
 
-BOOL CEquipModule::DispatchPacket(NetPacket* pNetPacket)
+VOID CEquipModule::RegisterMessageHanler()
 {
-	switch (pNetPacket->m_dwMsgID)
-	{
-			PROCESS_MESSAGE_ITEM(MSG_SETUP_EQUIP_REQ, OnMsgSetupEquipReq);
-			PROCESS_MESSAGE_ITEM(MSG_UNSET_EQUIP_REQ, OnMsgUnsetEquipReq);
-	}
-
-	return FALSE;
+	m_pOwnPlayer->m_NetMessagePump.RegisterMessageHandle(MSG_SETUP_EQUIP_REQ, &CEquipModule::OnMsgSetupEquipReq, this);
+	m_pOwnPlayer->m_NetMessagePump.RegisterMessageHandle(MSG_UNSET_EQUIP_REQ, &CEquipModule::OnMsgUnsetEquipReq, this);
 }
 
 

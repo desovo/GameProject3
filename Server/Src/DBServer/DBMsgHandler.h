@@ -2,7 +2,6 @@
 #define _DB_MSG_HANDLER_H_
 #include "DBManager.h"
 #include "LockFreeQueue.h"
-Th_RetName _DBWorkThread(void* pParam);
 
 class CDBMsgHandler
 {
@@ -26,6 +25,7 @@ public:
 public:
 	BOOL OnMsgRoleListReq(NetPacket* pPacket);
 	BOOL OnMsgRoleLoginReq(NetPacket* pPacket);
+	BOOL OnMsgRoleDeleteReq(NetPacket* pPacket);
 	BOOL OnMsgExeSqlReq(NetPacket* pPacket);
 	//*********************消息处理定义结束******************************
 
@@ -35,7 +35,7 @@ public:
 
 	ArrayLockFreeQueue<NetPacket*>		m_PacketQueue;
 
-	THANDLE								m_hThread;
+	std::thread*					   	m_pThread;
 
 	BOOL								m_bRun;
 };

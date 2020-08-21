@@ -14,7 +14,7 @@
     <ProjectGuid>{639FA6BE-9921-4385-9210-BD6CAC868D58}</ProjectGuid>
     <RootNamespace>ServerEngine</RootNamespace>
     <Keyword>Win32Proj</Keyword>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -96,8 +96,6 @@
     <ClCompile Include="CommonConvert.cpp" />
     <ClCompile Include="CommonFunc.cpp" />
     <ClCompile Include="CommonSocket.cpp" />
-    <ClCompile Include="CommonThreadFunc.cpp" />
-    <ClCompile Include="CommonWorkThread.cpp" />
     <ClCompile Include="ConfigFile.cpp" />
     <ClCompile Include="Connection.cpp" />
     <ClCompile Include="CrashReport.cpp" />
@@ -127,15 +125,10 @@
     <ClInclude Include="CommandLine.h" />
     <ClInclude Include="CommonConvert.h" />
     <ClInclude Include="CommonFunc.h" />
-    <ClInclude Include="CommonMsgQueue.h" />
     <ClInclude Include="CommonSocket.h" />
-    <ClInclude Include="CommonThreadFunc.h" />
-    <ClInclude Include="CommonWorkThread.h" />
     <ClInclude Include="ConfigFile.h" />
     <ClInclude Include="Connection.h" />
     <ClInclude Include="CrashReport.h" />
-    <ClInclude Include="CritSec.h" />
-    <ClInclude Include="CritSecNotify.h" />
     <ClInclude Include="DataBuffer.h" />
     <ClInclude Include="DBInterface\CppMysql.h" />
     <ClInclude Include="DBInterface\DBConnection.h" />
@@ -143,7 +136,6 @@
     <ClInclude Include="DBInterface\DBRecordSet.h" />
     <ClInclude Include="DBInterface\DBStoredProc.h" />
     <ClInclude Include="DFA.h" />
-    <ClInclude Include="EventFuncManager.h" />
     <ClInclude Include="HttpParameter.h" />
     <ClInclude Include="LockFreeQueue.h" />
     <ClInclude Include="LockFreeQueueImpl.h" />

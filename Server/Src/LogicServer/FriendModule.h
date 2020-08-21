@@ -1,7 +1,7 @@
 ﻿#ifndef __FRIEND_MODULE_H__
 #define __FRIEND_MODULE_H__
 #include "ModuleBase.h"
-#include "../ServerData/FriendData.h"
+#include "FriendData.h"
 struct FriendDataObject;
 class CFriendModule  : public CModuleBase
 {
@@ -21,7 +21,7 @@ public:
 
 	BOOL OnNewDay();
 
-	BOOL DispatchPacket(NetPacket* pNetPack);
+	VOID RegisterMessageHanler();
 
 	BOOL ReadFromDBLoginData(DBRoleLoginAck& Ack);
 
@@ -29,6 +29,7 @@ public:
 
 	FriendDataObject* GetFriendData(UINT64 uRoleID);
 
+	BOOL NotifyChange();
 public:
 	//*********************消息处理定义开始******************************
 

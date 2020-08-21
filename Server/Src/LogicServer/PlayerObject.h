@@ -5,6 +5,8 @@
 #include "ModuleBase.h"
 #include "../Message/Msg_Game.pb.h"
 #include "../ServerData/ServerDefine.h"
+#include "../ServerData/ServerStruct.h"
+#include "MsgHandlerManager.h"
 
 class CPlayerObject
 {
@@ -13,9 +15,8 @@ public:
 
 	~CPlayerObject();
 
-	//  初始化玩家对象
 	BOOL		Init(UINT64 u64ID);
-	//  反初始化玩家对家
+
 	BOOL		Uninit();
 
 	BOOL		OnCreate(UINT64 u64RoleID);
@@ -30,8 +31,6 @@ public:
 
 	BOOL		ReadFromDBLoginData(DBRoleLoginAck& Ack);
 
-	BOOL		DispatchPacket(NetPacket* pNetPack);
-
 	BOOL		SendMsgProtoBuf(UINT32 dwMsgID, const google::protobuf::Message& pdata);
 
 	BOOL		SendMsgRawData(UINT32 dwMsgID, const char* pdata, UINT32 dwLen);
@@ -39,11 +38,13 @@ public:
 	//向玩家所在的场景服发消息
 	BOOL		SendMsgToScene(UINT32 dwMsgID, const google::protobuf::Message& pdata);
 
-	BOOL		ToTransferData(TransferDataReq& Req);
+	BOOL		ToTransferData(TransferDataItem* pTransItem);
 
 	BOOL		NotifyTaskEvent(UINT32 dwEventID, UINT32 dwParam1, UINT32 dwParm2);
 
 	BOOL		IsOnline();
+
+	BOOL        SetOnline(BOOL bOnline);
 
 	BOOL		NotifyChange();
 
@@ -52,28 +53,37 @@ public:
 	BOOL		SendIntoSceneNotify(UINT32 dwCopyGuid, UINT32 dwCopyID, UINT32 dwSvrID);
 	BOOL		SendLeaveScene(UINT32 dwCopyGuid, UINT32 dwSvrID);
 	BOOL		SendRoleLoginAck();
-	BOOL		SendObjectChangeNtf(UINT32 dwChangeType, UINT64 uIntValue1, UINT64 uIntValue2, std::string strValue);
+	BOOL		SendPlayerChange(EChangeType eChangeType, UINT64 uIntValue1, UINT64 uIntValue2, std::string strValue);
 
 	BOOL		SetConnectID(UINT32 dwProxyID, UINT32 dwClientID);
 
-	BOOL		ClearCopyState();
+	BOOL		ClearCopyStatus();
+	BOOL        SetCopyStatus(UINT32 dwCopyGuid, UINT32 dwCopyID, UINT32 dwCopySvrID, BOOL bMainCity);
 
 	//模块函数
 	BOOL			CreateAllModule();
 	BOOL			DestroyAllModule();
 	CModuleBase*	GetModuleByType(UINT32 dwModuleType);
-	BOOL			OnAllModuleOK();
 
 public:
 	UINT32			CheckCopyConditoin(UINT32 dwCopyID);
 
 public:
-	UINT64			GetObjectID();
+	UINT64			GetRoleID();
+	UINT64          GetAccountID();
 	UINT32			GetCityCopyID();
 	UINT32			GetActorID();
 	CHAR*			GetName();
 	UINT32			GetCarrerID();
+	INT64           GetProperty(ERoleProperty ePropertyID);
+	//////////////////////////////////////////////////////////////////////////
+	//当前的多人排队情况
 
+	UINT64      m_uRoomID;      //房间ID
+
+	UINT64      GetRoomID();
+
+	VOID        SetRoomID(UINT64 uRoomID);
 
 	//////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////
@@ -84,9 +94,12 @@ public:
 
 	//////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////
 	//背包方法
 	//////////////////////////////////////////////////////////////////////////
+public:
+	//网络消息泵
+	CHandlerManager m_NetMessagePump;
+
 public:
 	UINT64			m_u64ID;
 	UINT32			m_dwProxyConnID;
@@ -95,12 +108,12 @@ public:
 	std::vector<CModuleBase*> m_MoudleList;
 
 public:
-	UINT32      m_dwCopyGuid;		//当前的副本ID
-	UINT32      m_dwCopyID;			//当前的副本类型
-	UINT32      m_dwCopySvrID;		//副本服务器的ID
-	UINT32      m_dwToCopyGuid;		//正在前往的副本ID
-	UINT32      m_dwToCopyID;		//正在前往的副本ID
-	UINT32      m_dwToCopySvrID;	//正在前往的副本服务器的ID
+	UINT32      m_dwCopyGuid;	//当前的副本实例ID
+	UINT32      m_dwCopyID;		//当前的副本类型
+	UINT32      m_dwCopySvrID;	//副本服务器的ID
+	BOOL        m_bMainCity;    //是否在主城中
+
+
 
 
 public:

@@ -9,8 +9,17 @@
 #include "..\Src\Message\Msg_LoginCltData.pb.h"
 #include "..\Src\ServerEngine\XMath.h"
 #include "..\Src\ServerEngine\CommonFunc.h"
-#include "..\Src\ServerEngine\CommandDef.h"
 #include "..\Src\ServerEngine\PacketHeader.h"
+
+#define PROCESS_MESSAGE_ITEM_CLIENT__(dwMsgID, Func) \
+		case dwMsgID:{\
+		if(Func(dwMsgID, PacketBuf, BufLen)){return TRUE;}}break;
+
+
+#define PROCESS_MESSAGE_ITEM_CLIENT(dwMsgID, Func) \
+		case dwMsgID:{\
+		printf("---Receive Message:[%s]---- \n", #dwMsgID); \
+		if(Func(dwMsgID, PacketBuf, BufLen)){return TRUE;}}break;
 
 int g_LoginReqCount = 0;
 int g_LoginCount = 0;
@@ -145,13 +154,13 @@ BOOL CClientObject::OnUpdate( UINT32 dwTick )
 
 	if(m_dwHostState == ST_NONE)
 	{
-		if(m_ClientConnector.GetConnectState() == Not_Connect)
+		if(m_ClientConnector.GetConnectState() == ECS_NO_CONNECT)
 		{
 			m_ClientConnector.ConnectTo("127.0.0.1", 5678);
 			//m_ClientConnector.ConnectToServer("47.93.31.69", 5678);
 		}
 
-		if(m_ClientConnector.GetConnectState() == Succ_Connect)
+		if(m_ClientConnector.GetConnectState() == ECS_CONNECTED)
 		{
 			SendNewAccountReq(m_strAccountName, m_strPassword);
 
@@ -352,12 +361,12 @@ VOID CClientObject::TestCopy()
 
 VOID CClientObject::TestExitCopy()
 {
-	AbortCopyReq Req;
-	Req.set_copyid(m_dwCopyID);
-	Req.set_copyguid(m_dwCopyGuid);
-	Req.set_serverid(m_dwCopySvrID);
-	m_ClientConnector.SendData(MSG_COPY_ABORT_REQ, Req, m_RoleIDList[0], 0);
-	m_dwHostState = ST_EnterCopy;
+// 	AbortCopyReq Req;
+// 	Req.set_copyid(m_dwCopyID);
+// 	Req.set_copyguid(m_dwCopyGuid);
+// 	Req.set_serverid(m_dwCopySvrID);
+// 	m_ClientConnector.SendData(MSG_COPY_ABORT_REQ, Req, m_RoleIDList[0], 0);
+// 	m_dwHostState = ST_EnterCopy;
 }
 
 BOOL CClientObject::MoveForward(FLOAT fDistance)
@@ -472,9 +481,9 @@ BOOL CClientObject::SendMainCopyReq()
 
 BOOL CClientObject::SendAbortCopyReq()
 {
-	AbortCopyReq Req;
-	Req.set_copyid(m_dwCopyGuid);
-	m_ClientConnector.SendData(MSG_COPY_ABORT_REQ, Req, m_RoleIDList[0], 0);
+// 	AbortCopyReq Req;
+// 	Req.set_copyid(m_dwCopyGuid);
+// 	m_ClientConnector.SendData(MSG_COPY_ABORT_REQ, Req, m_RoleIDList[0], 0);
 
 	m_dwHostState = ST_AbortCopy;
 	return TRUE;

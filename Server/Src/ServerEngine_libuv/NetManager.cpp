@@ -8,10 +8,11 @@
 #include "DataBuffer.h"
 
 
-void _Run_Loop(void *arg) {
-	
-	CNetManager *pNetManager = (CNetManager *)arg;
-	
+void _Run_Loop(void* arg)
+{
+
+	CNetManager* pNetManager = (CNetManager*)arg;
+
 	pNetManager->RunLoop();
 
 	return;
@@ -19,7 +20,7 @@ void _Run_Loop(void *arg) {
 
 void On_Async_Event(uv_async_t* handle)
 {
-	CConnection *pConnection = (CConnection *)handle->data;
+	CConnection* pConnection = (CConnection*)handle->data;
 
 	pConnection->DoSend();
 
@@ -30,8 +31,7 @@ void On_Async_Event(uv_async_t* handle)
 
 void On_Connection(uv_connect_t* req, int status)
 {
-	CConnection *pConnection = (CConnection *)req->data;
-
+	CConnection* pConnection = (CConnection*)req->data;
 	if (status == 0)
 	{
 		//成功
@@ -48,19 +48,15 @@ void On_Connection(uv_connect_t* req, int status)
 
 void On_RecvConnection(uv_stream_t* pServer, int status)
 {
-	if (status < 0) {
-		//失败
-		return;
-	}
-
-	CConnection *pConnection = CConnectionMgr::GetInstancePtr()->CreateConnection();
-	if (pConnection == NULL)
+	if (status < 0)
 	{
-		ASSERT_FAIELD;
 		return;
 	}
 
-	CNetManager *pNetManager = CNetManager::GetInstancePtr();
+	CConnection* pConnection = CConnectionMgr::GetInstancePtr()->CreateConnection();
+	ERROR_RETURN_NONE(pConnection != NULL);
+
+	CNetManager* pNetManager = CNetManager::GetInstancePtr();
 
 	uv_tcp_init(pNetManager->m_pMainLoop, pConnection->GetSocket());
 
@@ -68,7 +64,7 @@ void On_RecvConnection(uv_stream_t* pServer, int status)
 	{
 		pNetManager->HandleAccept(pConnection, 0);
 	}
-	else 
+	else
 	{
 		pConnection->Close();
 	}
@@ -86,14 +82,9 @@ CNetManager::~CNetManager(void)
 {
 }
 
-BOOL CNetManager::Start(UINT16 nPortNum, UINT32 nMaxConn, IDataHandler* pBufferHandler, std::string &strListenIp)
+BOOL CNetManager::Start(UINT16 nPortNum, UINT32 nMaxConn, IDataHandler* pBufferHandler, std::string& strListenIp)
 {
-	if(pBufferHandler == NULL)
-	{
-		ASSERT_FAIELD;
-
-		return FALSE;
-	}
+	ERROR_RETURN_FALSE(pBufferHandler != NULL);
 
 	m_pBufferHandler = pBufferHandler;
 
@@ -103,7 +94,7 @@ BOOL CNetManager::Start(UINT16 nPortNum, UINT32 nMaxConn, IDataHandler* pBufferH
 	{
 		strListenIp = "0.0.0.0";
 	}
-	
+
 	m_pMainLoop = uv_default_loop();
 
 	uv_tcp_init(m_pMainLoop, &m_ListenSocket);
@@ -125,8 +116,10 @@ BOOL CNetManager::Start(UINT16 nPortNum, UINT32 nMaxConn, IDataHandler* pBufferH
 	return TRUE;
 }
 
-BOOL CNetManager::Close()
+BOOL CNetManager::Stop()
 {
+	uv_close((uv_handle_t*)&m_ListenSocket, NULL);
+
 	uv_stop(m_pMainLoop);
 	uv_loop_close(m_pMainLoop);
 	uv_thread_join(&m_LoopThreadID);
@@ -140,7 +133,6 @@ BOOL CNetManager::Close()
 
 CConnection* CNetManager::ConnectTo_Sync(std::string strIpAddr, UINT16 sPort)
 {
-	ASSERT_FAIELD;
 	return NULL;
 }
 
@@ -148,7 +140,7 @@ CConnection* CNetManager::ConnectTo_Async( std::string strIpAddr, UINT16 sPort )
 {
 	struct sockaddr_in bind_addr;
 	int iret = uv_ip4_addr(strIpAddr.c_str(), sPort, &bind_addr);
-	if (iret) 
+	if (iret)
 	{
 		return NULL;
 	}
@@ -162,9 +154,9 @@ CConnection* CNetManager::ConnectTo_Async( std::string strIpAddr, UINT16 sPort )
 	iret = uv_tcp_init(m_pMainLoop, pConnection->GetSocket());
 	pConnection->GetSocket()->data = pConnection;
 	pConnection->m_ConnectReq.data = pConnection;
-	
+	pConnection->SetDataHandler(m_pBufferHandler);
 	iret = uv_tcp_connect(&pConnection->m_ConnectReq, pConnection->GetSocket(), (const sockaddr*)&bind_addr, On_Connection);
-	if (iret) 
+	if (iret)
 	{
 		pConnection->Close();
 	}
@@ -175,7 +167,7 @@ CConnection* CNetManager::ConnectTo_Async( std::string strIpAddr, UINT16 sPort )
 
 void CNetManager::HandleConnect(CConnection* pConnection, INT32 dwStatus)
 {
-	m_pBufferHandler->OnNewConnect(pConnection);
+	m_pBufferHandler->OnNewConnect(pConnection->GetConnectionID());
 
 	pConnection->DoReceive();
 
@@ -186,7 +178,17 @@ void CNetManager::HandleAccept(CConnection* pConnection, INT32 dwStatus)
 {
 	if (dwStatus == 0)
 	{
-		m_pBufferHandler->OnNewConnect(pConnection);
+		struct sockaddr_in ClientAddr;
+
+		socklen_t namelen = sizeof(ClientAddr);
+
+		uv_tcp_getpeername(pConnection->GetSocket(), (sockaddr*)&ClientAddr, &namelen);
+
+		pConnection->m_dwIpAddr = ClientAddr.sin_addr.s_addr;
+
+		m_pBufferHandler->OnNewConnect(pConnection->GetConnectionID());
+
+		pConnection->SetDataHandler(m_pBufferHandler);
 
 		pConnection->DoReceive();
 	}
@@ -195,7 +197,7 @@ void CNetManager::HandleAccept(CConnection* pConnection, INT32 dwStatus)
 		pConnection->Close();
 		//处理错误
 	}
-	
+
 	return;
 }
 
@@ -207,11 +209,11 @@ void CNetManager::RunLoop()
 	return;
 }
 
-BOOL	CNetManager::SendMsgBufByConnID(UINT32 dwConnID, IDataBuffer* pBuffer)
+BOOL	CNetManager::SendMessageBuff(UINT32 dwConnID, IDataBuffer* pBuffer)
 {
 	ERROR_RETURN_FALSE(dwConnID != 0);
 	ERROR_RETURN_FALSE(pBuffer != 0);
-	CConnection* pConn = CConnectionMgr::GetInstancePtr()->GetConnectionByConnID(dwConnID);
+	CConnection* pConn = CConnectionMgr::GetInstancePtr()->GetConnectionByID(dwConnID);
 	if (pConn == NULL)
 	{
 		//表示连接己经失败断开了，这个连接ID不可用了。
@@ -234,14 +236,14 @@ BOOL	CNetManager::SendMsgBufByConnID(UINT32 dwConnID, IDataBuffer* pBuffer)
 }
 
 
-BOOL CNetManager::SendMessageByConnID(UINT32 dwConnID, UINT32 dwMsgID, UINT64 u64TargetID, UINT32 dwUserData, const char* pData, UINT32 dwLen)
+BOOL CNetManager::SendMessageData(UINT32 dwConnID, UINT32 dwMsgID, UINT64 u64TargetID, UINT32 dwUserData, const char* pData, UINT32 dwLen)
 {
 	if (dwConnID <= 0)
 	{
 		return FALSE;
 	}
 
-	CConnection* pConn = CConnectionMgr::GetInstancePtr()->GetConnectionByConnID(dwConnID);
+	CConnection* pConn = CConnectionMgr::GetInstancePtr()->GetConnectionByID(dwConnID);
 	if (pConn == NULL)
 	{
 		//表示连接己经失败断开了，这个连接ID不可用了。
@@ -258,7 +260,7 @@ BOOL CNetManager::SendMessageByConnID(UINT32 dwConnID, UINT32 dwMsgID, UINT64 u6
 	ERROR_RETURN_FALSE(pDataBuffer != NULL);
 
 	PacketHeader* pHeader = (PacketHeader*)pDataBuffer->GetBuffer();
-	pHeader->CheckCode = 0x88;
+	pHeader->CheckCode = CODE_VALUE;
 	pHeader->dwUserData = dwUserData;
 	pHeader->u64TargetID = u64TargetID;
 	pHeader->dwSize = dwLen + sizeof(PacketHeader);
@@ -281,17 +283,13 @@ BOOL CNetManager::SendMessageByConnID(UINT32 dwConnID, UINT32 dwMsgID, UINT64 u6
 
 BOOL CNetManager::PostSendOperation(CConnection* pConnection)
 {
-	if (pConnection == NULL)
-	{
-		ASSERT_FAIELD;
-		return FALSE;
-	}
+	ERROR_RETURN_FALSE(pConnection != NULL);
 
 	if (!pConnection->m_IsSending)
 	{
 		uv_async_init(m_pMainLoop, &pConnection->m_AsyncReq, On_Async_Event);
 
-		pConnection->m_AsyncReq.data = pConnection;
+		uv_handle_set_data((uv_handle_t*)&pConnection->m_AsyncReq, (void*)pConnection);
 
 		uv_async_send(&pConnection->m_AsyncReq);
 	}

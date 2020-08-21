@@ -51,7 +51,7 @@ BOOL CSceneManager::CreateScene(UINT32 dwCopyID, UINT32 dwCopyGuid, UINT32 dwCop
 
 	if(!pScene->Init(dwCopyID, dwCopyGuid, dwCopyType, dwPlayerNum, uCreateKey))
 	{
-		ASSERT_FAIELD;
+		CLog::GetInstancePtr()->LogError("Error Create Scene Failed, CopyID:%d; CopyType:%d, PlayerNum:%d", dwCopyID, dwCopyType, dwPlayerNum);
 
 		delete pScene;
 
@@ -74,7 +74,12 @@ BOOL CSceneManager::DispatchPacket(NetPacket* pNetPacket)
 	}
 
 	CScene* pScene = GetSceneByCopyGuid(pPacketHeader->dwUserData);
-	ERROR_RETURN_FALSE(pScene != NULL);
+	if (pScene == NULL)
+	{
+		CLog::GetInstancePtr()->LogError("Error : Invalid CopyGuid:%d, MessageID:%d", pPacketHeader->dwUserData, pNetPacket->m_dwMsgID);
+		return TRUE;
+	}
+
 	if (pScene->DispatchPacket(pNetPacket))
 	{
 		return TRUE;
@@ -106,9 +111,9 @@ BOOL CSceneManager::OnUpdate( UINT64 uTick )
 			continue;
 		}
 
-		pScene->SetLastTick(uTick);
-
 		pScene->OnUpdate(uTick);
+
+		pScene->SetLastTick(uTick);
 
 		if(pScene->IsFinished())
 		{
@@ -189,12 +194,7 @@ BOOL CSceneManager::OnMsgCreateSceneReq(NetPacket* pNetPacket)
 
 BOOL CSceneManager::LoadMainScene()
 {
-	if(!CreateScene(6, MakeCopyGUID(), 3, 0, 0))
-	{
-		ASSERT_FAIELD;
-
-		return FALSE;
-	}
+	ERROR_RETURN_FALSE(CreateScene(6, MakeCopyGUID(), 3, 0, 0));
 
 	return TRUE;
 }

@@ -1,7 +1,7 @@
 ﻿#ifndef __MAIL_MODULE_H__
 #define __MAIL_MODULE_H__
 #include "ModuleBase.h"
-#include "../ServerData/MailData.h"
+#include "MailData.h"
 #include "../ServerData/ServerDefine.h"
 
 struct MailDataObject;
@@ -29,14 +29,19 @@ public:
 
 	BOOL CalcFightValue(INT32 nValue[PROPERTY_NUM], INT32 nPercent[PROPERTY_NUM], INT32& FightValue);
 
+	VOID RegisterMessageHanler();
 public:
 	BOOL AddMail(MailDataObject* pMail);
 
 	BOOL DeleteMail(UINT64 uGuid);
 
-	BOOL SendMail(std::string strSender, std::string strTitle, std::string strContent);
+	BOOL DeleteMailByGroupID(UINT64 uGuid);
+
+	BOOL AddMail(std::string& strSender, std::string& strTitle, std::string& strContent, std::vector<StMailItem>& vtItems);
 
 	MailDataObject* GetMailByGuid(UINT64 uGuid);
+
+	BOOL ReceiveGroupMail(GroupMailDataObject* pGroupMail);
 
 	BOOL NotifyChange();
 public:

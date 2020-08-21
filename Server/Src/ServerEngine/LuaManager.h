@@ -15,6 +15,8 @@ public:
 	~CLuaHelper(void);
 
 public:
+	lua_State* GetLuaState();
+
 	BOOL	Attach(lua_State* L);
 
 	BOOL	Deattch();
@@ -27,11 +29,15 @@ public:
 
 	BOOL	LoadScriptFile(std::vector<std::string>& vtScriptList);
 
+	BOOL    DoLuaScript(std::string strLuaScript);
+
 	BOOL	CallLuaFunction(std::string strFuncName, char* pStrParamSig, ...);
+
+	BOOL	CallLuaTableFunc(std::string strTableName, std::string strFuncName, char* pStrParamSig, ...);
 
 	BOOL	GetStackParams(char* pStrParamSig, ...);
 
-	BOOL    RegisterFunction(const char* libname, const luaL_Reg* l);
+	BOOL    RegisterFunction(const char* pszLibName, const luaL_Reg* l);
 
 	BOOL	RegisterFunction(const char* name, lua_CFunction fn);
 
@@ -46,9 +52,9 @@ public:
 	BOOL	GetGlobalVarBoolean(const char* pszVarName);
 	DOUBLE  GetGlobalVarDouble(const char* pszVarName);
 	const CHAR*	GetGlobalVarString(const char* pszVarName);
-	lua_State* GetLuaState();
 
 protected:
+
 	lua_State*			m_pLuaState;
 };
 

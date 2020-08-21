@@ -1,7 +1,7 @@
 ﻿#ifndef __SKILL_OBJECT_H__
 #define __SKILL_OBJECT_H__
 
-#include "../StaticData/SkillStruct.h"
+#include "SkillStruct.h"
 #include "XMath.h"
 #include "BulletObject.h"
 class CSceneObject;
@@ -30,7 +30,9 @@ public:
 
 	BOOL AddTargetObject(CSceneObject* pObject);
 
-	BOOL AttackTarget(CSceneObject* pTarget);
+	INT32 GetTargetNum();
+
+	BOOL AttackTarget(CSceneObject* pTarget, UINT32 HitActionID, UINT32 HitEffectID, FLOAT HitDistance);
 
 	BOOL CalcTargetObjects(StSkillEvent& SkillEvent);
 

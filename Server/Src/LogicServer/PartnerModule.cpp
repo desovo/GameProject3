@@ -1,9 +1,9 @@
 ﻿#include "stdafx.h"
+#include "PlayerObject.h"
 #include "PartnerModule.h"
 #include "DataPool.h"
 #include "GlobalDataMgr.h"
-#include "PlayerObject.h"
-#include "../StaticData/StaticData.h"
+#include "StaticData.h"
 #include "../Message/Msg_ID.pb.h"
 #include "../Message/Msg_RetCode.pb.h"
 #include "PacketHeader.h"
@@ -14,6 +14,7 @@ CPartnerModule::CPartnerModule(CPlayerObject* pOwner): CModuleBase(pOwner)
 	{
 		m_vtSetupPartner[i] = NULL;
 	}
+	RegisterMessageHanler();
 }
 
 CPartnerModule::~CPartnerModule()
@@ -26,7 +27,10 @@ CPartnerModule::~CPartnerModule()
 
 BOOL CPartnerModule::OnCreate(UINT64 u64RoleID)
 {
-
+	for (int i = 0; i < 20; i++)
+	{
+		AddPartner(i + 1);
+	}
 	return TRUE;
 }
 
@@ -73,6 +77,16 @@ BOOL CPartnerModule::ReadFromDBLoginData(DBRoleLoginAck& Ack)
 		pObject->m_RefineLevel = PartnerItem.refinelevel();
 		pObject->m_StarLevel = PartnerItem.starlevel();
 		pObject->m_SetPos = PartnerItem.setpos();
+
+		if (pObject->m_SetPos == 1)
+		{
+			m_vtSetupPartner[0] = pObject;
+		}
+		if (pObject->m_SetPos == 2)
+		{
+			m_vtSetupPartner[1] = pObject;
+		}
+
 		m_mapPartnerData.insert(std::make_pair(pObject->m_uGuid, pObject));
 	}
 	return TRUE;
@@ -93,6 +107,10 @@ BOOL CPartnerModule::SaveToClientLoginData(RoleLoginAck& Ack)
 		pItem->set_starexp(pObject->m_StarExp);
 		pItem->set_setpos(pObject->m_SetPos);
 	}
+
+	m_setChange.clear();
+	m_setRemove.clear();
+
 	return TRUE;
 }
 
@@ -102,15 +120,58 @@ BOOL CPartnerModule::CalcFightValue(INT32 nValue[PROPERTY_NUM], INT32 nPercent[P
 	return TRUE;
 }
 
-BOOL CPartnerModule::DispatchPacket(NetPacket* pNetPacket)
+VOID CPartnerModule::RegisterMessageHanler()
 {
-	switch (pNetPacket->m_dwMsgID)
+	m_pOwnPlayer->m_NetMessagePump.RegisterMessageHandle(MSG_SETUP_PARTNER_REQ, &CPartnerModule::OnMsgSetupPartnerReq, this);
+	m_pOwnPlayer->m_NetMessagePump.RegisterMessageHandle(MSG_UNSET_PARTNER_REQ, &CPartnerModule::OnMsgUnsetPartnerReq, this);
+}
+
+BOOL CPartnerModule::ToTransferData(TransferDataItem* pTransItem)
+{
+	for (int i = 0; i < PARTNER_MAX_NUM; i++)
 	{
-		PROCESS_MESSAGE_ITEM(MSG_SETUP_PARTNER_REQ, OnMsgSetupPartnerReq);
-		PROCESS_MESSAGE_ITEM(MSG_UNSET_PARTNER_REQ, OnMsgUnsetPartnerReq);
+		if (m_vtSetupPartner[i] == NULL)
+		{
+			continue;
+		}
+
+		PartnerDataObject* pObject = m_vtSetupPartner[i];
+		if (pObject == NULL)
+		{
+			return TRUE;
+		}
+
+		StPartnerInfo* pPartnerInfo = CStaticData::GetInstancePtr()->GetPartnerInfo(pObject->m_PartnerID);
+		ERROR_RETURN_FALSE(pPartnerInfo != NULL);
+
+		StActorInfo* pActorInfo = CStaticData::GetInstancePtr()->GetActorInfo(pPartnerInfo->dwActorID);
+		ERROR_RETURN_FALSE(pActorInfo != NULL);
+
+		TransPartnerData* pPartnerData = pTransItem->mutable_partnerdata();
+		ERROR_RETURN_FALSE(pPartnerData != NULL);
+
+		pPartnerData->set_actorid(pPartnerInfo->dwActorID);
+		pPartnerData->set_level(pObject->m_StrengthLvl);
+		pPartnerData->set_partnerguid(pObject->m_uGuid);
+		pPartnerData->set_partnerid(pObject->m_PartnerID);
+
+		for (int i = 0; i < PROPERTY_NUM; i++)
+		{
+			pPartnerData->add_propertys(pActorInfo->Propertys[i]);
+		}
+
+		StActorSkillInfo* pActorSkillInfo = CStaticData::GetInstancePtr()->GetActorSkillInfo(pPartnerInfo->dwActorID);
+		ERROR_RETURN_FALSE(pActorSkillInfo != NULL);
+
+		SkillItem* pSkillItem = pPartnerData->add_skills();
+		pSkillItem->set_keypos(1);
+		pSkillItem->set_level(1);
+		pSkillItem->set_skillid(pActorSkillInfo->NormalID);
+
+		return TRUE;
 	}
 
-	return FALSE;
+	return TRUE;
 }
 
 BOOL CPartnerModule::OnMsgSetupPartnerReq(NetPacket* pNetPacket)
@@ -127,7 +188,7 @@ BOOL CPartnerModule::OnMsgSetupPartnerReq(NetPacket* pNetPacket)
 		return TRUE;
 	}
 
-	PartnerDataObject *pPartnerObj = GetPartnerByGuid(Req.partnerguid());
+	PartnerDataObject* pPartnerObj = GetPartnerByGuid(Req.partnerguid());
 	if(pPartnerObj == NULL)
 	{
 		SetupPartnerAck Ack;
@@ -141,19 +202,19 @@ BOOL CPartnerModule::OnMsgSetupPartnerReq(NetPacket* pNetPacket)
 		m_vtSetupPartner[Req.targetpos() - 1]->Lock();
 		m_vtSetupPartner[Req.targetpos() - 1]->m_SetPos = 0;
 		m_vtSetupPartner[Req.targetpos() - 1]->Unlock();
-		m_setChange.insert(m_vtSetupPartner[Req.targetpos() - 1]->m_uGuid);
+		AddChangeID(m_vtSetupPartner[Req.targetpos() - 1]->m_uGuid);
 	}
 
 	m_vtSetupPartner[Req.targetpos() - 1] = pPartnerObj;
 	pPartnerObj->Lock();
 	pPartnerObj->m_SetPos = Req.targetpos();
 	pPartnerObj->Unlock();
-	m_setChange.insert(pPartnerObj->m_uGuid);
-	
+	AddChangeID(pPartnerObj->m_uGuid);
+
 	SetupPartnerAck Ack;
 	Ack.set_retcode(MRC_SUCCESSED);
 	m_pOwnPlayer->SendMsgProtoBuf(MSG_SETUP_PARTNER_ACK, Ack);
-	
+
 	return TRUE;
 }
 
@@ -176,7 +237,7 @@ BOOL CPartnerModule::OnMsgUnsetPartnerReq(NetPacket* pNetPacket)
 		m_vtSetupPartner[Req.targetpos() - 1]->Lock();
 		m_vtSetupPartner[Req.targetpos() - 1]->m_SetPos = 0;
 		m_vtSetupPartner[Req.targetpos() - 1]->Unlock();
-		m_setChange.insert(m_vtSetupPartner[Req.targetpos() - 1]->m_uGuid);
+		AddChangeID(m_vtSetupPartner[Req.targetpos() - 1]->m_uGuid);
 	}
 
 	UnsetPartnerAck Ack;
@@ -191,7 +252,7 @@ UINT64 CPartnerModule::AddPartner(UINT32 dwPartnerID)
 	PartnerDataObject* pObject = DataPool::CreateObject<PartnerDataObject>(ESD_PARTNER, TRUE);
 	pObject->Lock();
 	pObject->m_PartnerID = dwPartnerID;
-	pObject->m_uRoleID = m_pOwnPlayer->GetObjectID();
+	pObject->m_uRoleID = m_pOwnPlayer->GetRoleID();
 	pObject->m_uGuid   = CGlobalDataManager::GetInstancePtr()->MakeNewGuid();
 	pObject->m_StrengthLvl = 1;
 	pObject->m_RefineExp = 0;
@@ -201,7 +262,7 @@ UINT64 CPartnerModule::AddPartner(UINT32 dwPartnerID)
 	pObject->m_SetPos = 0;
 	pObject->Unlock();
 	m_mapPartnerData.insert(std::make_pair(pObject->m_uGuid, pObject));
-	m_setChange.insert(pObject->m_uGuid);
+	AddChangeID(pObject->m_uGuid);
 	return pObject->m_uGuid;
 }
 

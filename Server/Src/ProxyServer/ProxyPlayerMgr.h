@@ -47,7 +47,7 @@ public:
 
 	BOOL			RemoveByCharID(UINT64 u64RoleID);
 
-	BOOL			GetPlayerOnline(UINT64 u64RoleID);
+	CProxyPlayer*   GetByConnID(UINT32 dwConnID);
 };
 
 #endif /*__PROXY_PLAYER_MGR_H__*/

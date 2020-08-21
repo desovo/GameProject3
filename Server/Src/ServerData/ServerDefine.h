@@ -19,6 +19,7 @@
 //公会名长度
 #define GUILD_NAME_LEN		255
 #define GUILD_NOTICE_LEN	1024
+#define GUILD_MAX_APPLY_NUM 50
 
 //语言数
 #define MAX_LANGUAGE_NUM	15
@@ -28,7 +29,7 @@
 #define SQL_BUFF_LEN		1024
 
 //邮件
-#define MAIL_CONTNET_LEN	2048
+#define MAIL_CONTENT_LEN	2048
 #define MAIL_TITLE_LEN		255
 #define MAIL_ITEM_COUNT		10
 
@@ -43,17 +44,6 @@
 #define SPEED_WALK			(2.5f)
 #define SPEED_RUN			(4.0f)
 #define SPEED_FLY			(6.5f)
-
-
-
-//副本战斗结果
-enum ECopyResult
-{
-	CR_NONE = 0,	//未结算
-	CR_WIN,         //胜利
-	CR_LOST,		//失败
-	CR_DRAW			//平局
-};
 
 enum EMouduleType
 {
@@ -70,6 +60,8 @@ enum EMouduleType
 	MT_COUNTER,
 	MT_STORE,
 	MT_SKILL,
+	MT_MAIL,    //邮件
+	MT_FRIEND,
 	MT_END
 };
 
@@ -89,6 +81,7 @@ enum EShareData
 	ESD_TASK,
 	ESD_MOUNT,
 	ESD_MAIL,
+	ESD_OFFDATA,   //离线操作
 	ESD_GROUP_MAIL,
 	ESD_ACTIVITY,
 	ESD_COUNTER,
@@ -114,13 +107,13 @@ enum EActivtyType
 	ACT_DISCOUNT_SALE = 5,
 };
 
-
-
-enum EGuildPos
+enum ERoleProperty
 {
-	EGP_MEMBER		= 0,
-	EGP_LEADER		= 1,
-	EGP_VICELEADER  = 2,
+	ERP_ID = 1,
+	ERP_LEVEL,
+	ERP_VIPLEVEL,
+	ERP_EXP,
+	ERP_CHANNEL,
 };
 
 #endif //__SERVER_STRUCT_H__

@@ -14,7 +14,7 @@
     <ProjectGuid>{1EB19A2A-049A-45AD-A592-E94703018D85}</ProjectGuid>
     <RootNamespace>WorldServer</RootNamespace>
     <Keyword>Win32Proj</Keyword>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -60,7 +60,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\ServerEngine;..\..\Common;..\..\Common\protobuf\src;../../Common/MySql;..\..\Common\Sqlite;../../Common/Lua;../../Common/toluapp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\ServerEngine;..\PublicData;..\..\Common;..\..\Common\protobuf\src;../../Common/MySql;..\..\Common\Sqlite;../../Common/Lua;../../Common/toluapp;..\ServerData;..\StaticData;..\WatcherClient;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -79,9 +79,9 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>MinSpace</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\ServerEngine;..\..\Common;..\..\Common\protobuf\src;../../Common/MySql;..\..\Common\Sqlite;../../Common/Lua;../../Common/toluapp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\ServerEngine;..\PublicData;..\..\Common;..\..\Common\protobuf\src;../../Common/MySql;..\..\Common\Sqlite;../../Common/Lua;../../Common/toluapp;..\ServerData;..\StaticData;..\WatcherClient;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -101,6 +101,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Message\Msg_Account.pb.cc">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Message\Msg_Role.pb.cc">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\StaticData\StaticData.cpp" />
     <ClCompile Include="..\StaticData\CppSQLite3.cpp" />
     <ClCompile Include="..\Message\Game_Define.pb.cc">
@@ -131,10 +139,13 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\WatcherClient\WatcherClient.cpp" />
     <ClCompile Include="ActivityManager.cpp" />
     <ClCompile Include="ActivityModule.cpp" />
     <ClCompile Include="BagModule.cpp" />
-    <ClCompile Include="GmCommand.cpp" />
+    <ClCompile Include="EventManager.cpp" />
+    <ClCompile Include="GameLogManager.cpp" />
+    <ClCompile Include="WebCommandMgr.cpp" />
     <ClCompile Include="CopyModule.cpp" />
     <ClCompile Include="CounterModule.cpp" />
     <ClCompile Include="DataPool.cpp" />
@@ -144,10 +155,10 @@
     <ClCompile Include="GameSvrMgr.cpp" />
     <ClCompile Include="GemModule.cpp" />
     <ClCompile Include="GlobalDataMgr.cpp" />
-    <ClCompile Include="GroupMailMgr.cpp" />
+    <ClCompile Include="LoginCodeMgr.cpp" />
+    <ClCompile Include="MailManager.cpp" />
     <ClCompile Include="Guild.cpp" />
     <ClCompile Include="GuildManager.cpp" />
-    <ClCompile Include="LogManager.cpp" />
     <ClCompile Include="MailModule.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="ModuleBase.cpp" />
@@ -168,9 +179,11 @@
     <ClCompile Include="StoreModule.cpp" />
     <ClCompile Include="TaskModule.cpp" />
     <ClCompile Include="LogicMsgHandler.cpp" />
-    <ClCompile Include="WebCommandHandler.cpp" />
+    <ClCompile Include="TeamCopyMgr.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Message\Msg_Account.pb.h" />
+    <ClInclude Include="..\Message\Msg_Role.pb.h" />
     <ClInclude Include="..\StaticData\StaticData.h" />
     <ClInclude Include="..\StaticData\ConfigDefine.h" />
     <ClInclude Include="..\StaticData\StaticStruct.h" />
@@ -201,10 +214,13 @@
     <ClInclude Include="..\ServerData\SkillData.h" />
     <ClInclude Include="..\ServerData\StoreData.h" />
     <ClInclude Include="..\ServerData\TaskData.h" />
+    <ClInclude Include="..\WatcherClient\WatcherClient.h" />
     <ClInclude Include="ActivityManager.h" />
     <ClInclude Include="ActivityModule.h" />
     <ClInclude Include="BagModule.h" />
-    <ClInclude Include="GmCommand.h" />
+    <ClInclude Include="EventManager.h" />
+    <ClInclude Include="GameLogManager.h" />
+    <ClInclude Include="WebCommandMgr.h" />
     <ClInclude Include="CopyModule.h" />
     <ClInclude Include="CounterModule.h" />
     <ClInclude Include="DataPool.h" />
@@ -214,14 +230,15 @@
     <ClInclude Include="GameSvrMgr.h" />
     <ClInclude Include="GemModule.h" />
     <ClInclude Include="GlobalDataMgr.h" />
-    <ClInclude Include="GroupMailMgr.h" />
+    <ClInclude Include="LoginCodeMgr.h" />
+    <ClInclude Include="MailManager.h" />
     <ClInclude Include="Guild.h" />
     <ClInclude Include="GuildManager.h" />
-    <ClInclude Include="LogManager.h" />
     <ClInclude Include="Lua_Script.h" />
     <ClInclude Include="MailModule.h" />
     <ClInclude Include="ModuleBase.h" />
     <ClInclude Include="MountModule.h" />
+    <ClInclude Include="MsgHandlerManager.h" />
     <ClInclude Include="PartnerModule.h" />
     <ClInclude Include="PayManager.h" />
     <ClInclude Include="PetModule.h" />
@@ -235,6 +252,7 @@
     <ClInclude Include="StoreModule.h" />
     <ClInclude Include="TaskModule.h" />
     <ClInclude Include="LogicMsgHandler.h" />
+    <ClInclude Include="TeamCopyMgr.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />

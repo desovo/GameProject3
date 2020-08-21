@@ -1,6 +1,6 @@
 ﻿#ifndef __STATIC_STRUCT_H__
 #define __STATIC_STRUCT_H__
-
+#include "../Message/Game_Define.pb.h"
 struct  StConstantValue
 {
 	StConstantValue() {}
@@ -45,15 +45,19 @@ struct StActorInfo
 {
 	StActorInfo()
 	{
-		dwID	= 0;
-		fRadius = 0;
-		fDefSpeed = 0;
-		InitLevel = 0;
+		dwID        = 0;
+		fRadius     = 0;
+		fDefSpeed   = 0;
+		InitLevel   = 0;
+		dwType      = 0;
+		AiID        = 0;
 	}
 	UINT32  dwID;
 	FLOAT   fRadius;
 	FLOAT	fDefSpeed;
+	INT32   dwType;
 	INT32   InitLevel; //初始等级
+	INT32   AiID;
 	INT32   Propertys[PROPERTY_NUM];
 
 	std::string strName;
@@ -67,6 +71,14 @@ struct StActorSkillInfo
 	UINT32  dwActorID = 0;
 	INT32   NormalID = 0;
 	INT32   Specials[5] = { 0 };
+};
+
+struct StChargeInfo
+{
+	StChargeInfo()
+	{
+	}
+	UINT32  dwProductID = 0;
 };
 
 struct StCarrerInfo
@@ -116,18 +128,6 @@ struct StActionInfo
 	UINT32 dwMax;		//最大值
 };
 
-struct StMoneyInfo
-{
-	StMoneyInfo()
-	{
-		dwMoneyID = 0;	//货币ID
-		dwMax = 0;		//上限
-	}
-
-	UINT32 dwMoneyID;	//货币ID
-	UINT32 dwMax;		//上限
-};
-
 
 struct  StItemData
 {
@@ -158,7 +158,7 @@ struct StAwardItem
 struct StItemInfo
 {
 	UINT32 dwItemID;	//物品ID
-	UINT32 dwItemType;	//物品类型
+	EItemType eItemType;//物品类型
 	UINT32 dwBagType;	//物品背包类型
 	UINT32 Quality;		//物品的品质
 	UINT32 SellID;		//出售货币ID
@@ -176,7 +176,7 @@ struct StFuncInfo
 	UINT32 dwFuncID;	//! 功能ID
 	INT32 OpenLevel;	//! 开放等级
 	INT32 VipLevel;		//! VIP提前开放等级
-	INT32 Logic;		//! 逻辑关系 1->优先VIP 2->同时满足
+	INT32 Logic;		//! 逻辑关系 1:两者取其一; 2:两者都必须; 3: 满足VIP条件; 4:满足等级条件
 };
 
 
@@ -203,7 +203,7 @@ struct StGemInfo
 struct StPetInfo
 {
 	UINT32 dwPetID;		//! ID
-	UINT32  dwActorID;
+	UINT32 dwActorID;
 };
 
 struct StPartnerInfo
@@ -212,6 +212,12 @@ struct StPartnerInfo
 	UINT32  dwActorID;
 };
 
+
+struct StMountInfo
+{
+	UINT32  dwMountID;		//! ID
+	UINT32  dwActorID;
+};
 
 struct StTaskInfo
 {

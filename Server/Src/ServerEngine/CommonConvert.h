@@ -29,21 +29,23 @@ std::string IntToString(INT64 nValue);
 
 BOOL  StringToPos(char* pStr, FLOAT& x, FLOAT& y, FLOAT& z);
 
+BOOL  StringToBox(char* pStr, FLOAT& left, FLOAT& top, FLOAT& right, FLOAT& bottom);
+
 //浮点到字符串， nPrecision 保留的最大小数的位数， bRound 是否四舍五入
 std::string FloatToString(FLOAT fValue, INT32 nPrecision = -1, BOOL bRound = FALSE);
 
-std::wstring Utf8_To_Unicode(std::string strValue);
-
-std::string  Unicode_To_Uft8(std::wstring wstrValue);
-
-std::wstring Ansi_To_Unicode(std::string strValue);
-
-std::string Unicode_To_Ansi(std::wstring strValue);
-
-std::string Utf8_To_Ansi(std::string strValue);
-
-std::string Ansi_To_Uft8(std::string wstrValue);
-
+// std::wstring Utf8_To_Unicode(std::string strValue);
+//
+// std::string  Unicode_To_Uft8(std::wstring wstrValue);
+//
+// std::wstring Ansi_To_Unicode(std::string strValue);
+//
+// std::string Unicode_To_Ansi(std::wstring strValue);
+//
+// std::string Utf8_To_Ansi(std::string strValue);
+//
+// std::string Ansi_To_Uft8(std::string wstrValue);
+//
 BOOL IsTextUTF8(const char* str, UINT32 length);
 
 BOOL SpliteString(std::string strSrc,  std::string strDelim, std::vector<std::string>& vtStr);
@@ -56,9 +58,11 @@ BOOL StringToVector(const char* pStrValue, INT32 IntVector[], INT32 nSize, char 
 
 BOOL StringToVector(const char* pStrValue, FLOAT FloatVector[], INT32 nSize, char cDelim = ',');
 
-UINT32 VersionToInt(std::string& strVersion);
+UINT32 VersionToInt(const std::string& strVersion);
 
-INT32  CountSymbol(char* pStr, char cSymbol);
+INT32 CountSymbol(char* pStr, char cSymbol);
+
+BOOL HasSymbol(const char* pStr, const char* pszSymbol);
 
 BOOL StringTrim(std::string& strValue);
 

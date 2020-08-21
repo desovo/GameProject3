@@ -14,17 +14,19 @@ protected:
 public:
 	static ServiceBase* GetInstancePtr();
 
-	BOOL            StartNetwork(UINT16 nPortNum, UINT32 nMaxConn, IPacketDispatcher* pDispather, std::string strListenIp="");
+	BOOL            StartNetwork(UINT16 nPortNum, UINT32 nMaxConn, IPacketDispatcher* pDispather, std::string strListenIp = "");
 
 	BOOL            StopNetwork();
 
-	BOOL			OnDataHandle(IDataBuffer* pDataBuffer, CConnection* pConnection);
+	BOOL			OnDataHandle(IDataBuffer* pDataBuffer, UINT32 nConnID);
 
-	BOOL			OnCloseConnect(CConnection* pConnection);
+	BOOL			OnCloseConnect(UINT32 nConnID);
 
-	BOOL			OnNewConnect(CConnection* pConnection);
+	BOOL			OnNewConnect(UINT32 nConnID);
 
 	CConnection*	ConnectTo(std::string strIpAddr, UINT16 sPort);
+
+	BOOL            CloseConnect(UINT32 nConnID);
 
 	template<typename T>
 	BOOL			SendMsgStruct(UINT32 dwConnID, UINT32 dwMsgID, UINT64 u64TargetID, UINT32 dwUserData, T& Data);

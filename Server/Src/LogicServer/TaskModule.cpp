@@ -8,7 +8,7 @@
 #include "../Message/Game_Define.pb.h"
 CTaskModule::CTaskModule(CPlayerObject* pOwner): CModuleBase(pOwner)
 {
-
+	RegisterMessageHanler();
 }
 
 CTaskModule::~CTaskModule()
@@ -57,12 +57,10 @@ BOOL CTaskModule::ReadFromDBLoginData(DBRoleLoginAck& Ack)
 	{
 		const DBTaskItem& TaskItem = TaskData.tasklist(i);
 		TaskDataObject* pObject = DataPool::CreateObject<TaskDataObject>(ESD_TASK, FALSE);
-		pObject->Lock();
 		pObject->m_nProgress = TaskItem.progress();
 		pObject->m_uRoleID = TaskItem.roleid();
 		pObject->m_uTaskID = TaskItem.taskid();
 		pObject->m_TaskStatus = TaskItem.status();
-		pObject->Unlock();
 
 		if(pObject->m_TaskStatus == ETS_COMMIT)
 		{
@@ -87,9 +85,8 @@ BOOL CTaskModule::CalcFightValue(INT32 nValue[PROPERTY_NUM], INT32 nPercent[PROP
 	return TRUE;
 }
 
-BOOL CTaskModule::DispatchPacket(NetPacket* pNetPacket)
+VOID CTaskModule::RegisterMessageHanler()
 {
-	return FALSE;
 }
 
 BOOL CTaskModule::OnTaskEvent(ETaskEvent taskEvent, UINT32 dwParam1, UINT32 dwParam2)

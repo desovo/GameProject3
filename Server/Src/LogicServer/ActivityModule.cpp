@@ -3,12 +3,12 @@
 #include "DataPool.h"
 #include "GlobalDataMgr.h"
 #include "../Message/Msg_LoginDBData.pb.h"
-#include "../StaticData/StaticStruct.h"
-#include "../StaticData/StaticData.h"
+#include "StaticStruct.h"
+#include "StaticData.h"
 
 CActivityModule::CActivityModule(CPlayerObject* pOwner): CModuleBase(pOwner)
 {
-
+	RegisterMessageHanler();
 }
 
 CActivityModule::~CActivityModule()
@@ -85,9 +85,8 @@ BOOL CActivityModule::OnNewDay()
 	return TRUE;
 }
 
-BOOL CActivityModule::DispatchPacket(NetPacket* pNetPacket)
+VOID CActivityModule::RegisterMessageHanler()
 {
-	return FALSE;
 }
 
 BOOL CActivityModule::ReadFromDBLoginData(DBRoleLoginAck& Ack)

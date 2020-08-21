@@ -1,8 +1,8 @@
 ﻿#ifndef __TYPE_DATA_PARSER_H__
 #define __TYPE_DATA_PARSER_H__
 #include "CppSQLite3.h"
-#include "../StaticData/StaticStruct.h"
-#include "../StaticData/SkillStruct.h"
+#include "StaticStruct.h"
+#include "SkillStruct.h"
 class CStaticData;
 
 typedef BOOL(CStaticData::*DataFunc)(CppSQLite3Query& QueryData);
@@ -37,13 +37,10 @@ public:
 	INT32 GetConstantValue(std::string& strName);
 	INT32 GetConstantValue(char* pszName);
 
-	//货币和体力
+	//体力
 	///////////////////////////////////////////////
-	std::vector<StMoneyInfo> m_vtMoneyList;
 	std::vector<StActionInfo> m_vtActionList;
-	BOOL ReadMoneyCfg(CppSQLite3Query& QueryData);
 	BOOL ReadActionCfg(CppSQLite3Query& QueryData);
-	INT64 GetMoneyMaxValue(UINT32 dwMoneyID);
 	INT64 GetActoinMaxValue(UINT32 dwActionID);
 	UINT32 GetActoinUnitTime(UINT32 dwActionID);
 
@@ -76,7 +73,7 @@ public:
 	std::map<UINT32, StCopyInfo> m_mapCopyInfo;
 	BOOL ReadCopyInfo(CppSQLite3Query& QueryData);
 	StCopyInfo* GetCopyInfo(UINT32 dwCopyID);
-
+	UINT32 GetCopyType(UINT32 dwCopyID);
 	//语言配制表
 	///////////////////////////////////////////////
 	std::map<UINT32, StLocalString> m_mapLanguage;
@@ -136,6 +133,11 @@ public:
 	BOOL ReadPartnerInfo(CppSQLite3Query& QueryData);
 	StPartnerInfo* GetPartnerInfo(UINT32 dwPartnerID);
 
+	//坐骑
+	std::map<UINT32, StMountInfo> m_mapMountInfo;
+	BOOL ReadMountInfo(CppSQLite3Query& QueryData);
+	StMountInfo* GetMountInfo(UINT32 dwMountID);
+
 	//任务
 	std::map<UINT32, StTaskInfo> m_mapTaskInfo;
 	BOOL ReadTaskInfo(CppSQLite3Query& QueryData);
@@ -176,10 +178,13 @@ public:
 	std::map<UINT32, StBulletInfo> m_mapBulletInfo;
 	BOOL ReadBulletInfo(CppSQLite3Query& QueryData);
 	StBulletInfo* GetBulletInfo(UINT32 dwBulletID);
+
+	//充值产品表
+	std::map<UINT32, StChargeInfo> m_mapChargeInfo;
+	BOOL ReadChargeInfo(CppSQLite3Query& QueryData);
+	StChargeInfo* GetChargeInfo(UINT32 dwBulletID);
 	//=================================================================
 public:
-
-	CppSQLite3DB	m_DBConnection;
 
 	std::vector<DataFuncNode> m_vtDataFuncList;
 };

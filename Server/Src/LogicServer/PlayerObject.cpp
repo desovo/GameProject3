@@ -16,13 +16,18 @@
 #include "StoreModule.h"
 #include "GemModule.h"
 #include "SkillModule.h"
-#include "../ServerData/ServerDefine.h"
-#include "../ServerData/RoleData.h"
-#include "../StaticData/StaticData.h"
-#include "../ServerData/CopyData.h"
-#include "../GameServer/GameService.h"
+#include "MailModule.h"
+#include "FriendModule.h"
+#include "ServerDefine.h"
+#include "RoleData.h"
+#include "StaticData.h"
+#include "CopyData.h"
 #include "../Message/Msg_ID.pb.h"
 #include "../Message/Msg_RetCode.pb.h"
+#include "MailManager.h"
+#include "GameLogManager.h"
+
+
 
 CPlayerObject::CPlayerObject()
 {
@@ -40,13 +45,10 @@ BOOL CPlayerObject::Init(UINT64 u64ID)
 	m_dwProxyConnID     = 0;
 	m_dwClientConnID    = 0;
 	m_dwCopyGuid        = 0;      //当前的副本ID
-	m_dwCopyID			= 0;        //当前的副本类型
+	m_dwCopyID          = 0;        //当前的副本类型
 	m_dwCopySvrID       = 0;        //副本服务器的ID
-	m_dwToCopyGuid      = 0;        //正在前往的副本ID
-	m_dwToCopyID        = 0;         //正在前往的副本ID
-	m_dwToCopySvrID     = 0;
-	m_IsOnline			= FALSE;
-
+	m_IsOnline          = FALSE;
+	m_uRoomID           = 0;
 	ERROR_RETURN_FALSE(CreateAllModule());
 
 	return TRUE;
@@ -61,9 +63,9 @@ BOOL CPlayerObject::Uninit()
 	m_dwCopyGuid        = 0;        //当前的副本ID
 	m_dwCopyID          = 0;        //当前的副本类型
 	m_dwCopySvrID       = 0;        //副本服务器的ID
-	m_dwToCopyGuid      = 0;        //正在前往的副本ID
-	m_dwToCopyID        = 0;        //正在前往的副本类型
-	m_IsOnline			= FALSE;
+	m_IsOnline			= FALSE;    //是否在线
+	m_uRoomID           = 0;
+	m_NetMessagePump.ClearAll();
 	return TRUE;
 }
 
@@ -97,6 +99,38 @@ BOOL CPlayerObject::OnLogin()
 
 	m_IsOnline = TRUE;
 
+	CRoleModule* pRoleModule = (CRoleModule*)GetModuleByType(MT_ROLE);
+	ERROR_RETURN_VALUE(pRoleModule != NULL, MRC_UNKNOW_ERROR);
+
+	if (pRoleModule->GetLastLogoffTime() < pRoleModule->GetLastLogonTime())
+	{
+		pRoleModule->SetLastLogoffTime(pRoleModule->GetLastLogonTime() + 5);
+	}
+
+	if (!CommonFunc::IsSameDay(pRoleModule->GetLastLogoffTime()))
+	{
+		for (int i = MT_ROLE; i < MT_END; i++)
+		{
+			CModuleBase* pBase = m_MoudleList.at(i);
+			ERROR_RETURN_FALSE(pBase != NULL);
+			pBase->OnNewDay();
+		}
+	}
+
+	m_uRoomID = 0;
+
+	ERROR_RETURN_FALSE(m_u64ID != 0);
+
+	CMailManager::GetInstancePtr()->ProcessRoleLogin(this);
+
+	CalcFightDataInfo();
+
+	SendRoleLoginAck();
+
+	CGameSvrMgr::GetInstancePtr()->SendPlayerToMainCity(m_u64ID, GetCityCopyID());
+
+	CGameLogManager::GetInstancePtr()->LogRoleLogin(this);
+
 	return TRUE;
 }
 
@@ -110,6 +144,8 @@ BOOL CPlayerObject::OnLogout()
 	}
 
 	m_IsOnline = FALSE;
+
+	m_uRoomID = 0;
 
 	return TRUE;
 }
@@ -137,22 +173,6 @@ BOOL CPlayerObject::ReadFromDBLoginData(DBRoleLoginAck& Ack)
 	return TRUE;
 }
 
-BOOL CPlayerObject::DispatchPacket(NetPacket* pNetPacket)
-{
-	for (int i = MT_ROLE; i < MT_END; i++)
-	{
-		CModuleBase* pBase = m_MoudleList.at(i);
-		ERROR_RETURN_FALSE(pBase != NULL);
-
-		if (pBase->DispatchPacket(pNetPacket))
-		{
-			return TRUE;
-		}
-	}
-
-	return FALSE;
-}
-
 BOOL CPlayerObject::CreateAllModule()
 {
 	m_MoudleList.assign(MT_END, NULL);
@@ -169,7 +189,8 @@ BOOL CPlayerObject::CreateAllModule()
 	m_MoudleList[MT_COUNTER]		= new CCounterModule(this);
 	m_MoudleList[MT_STORE]			= new CStoreModule(this);
 	m_MoudleList[MT_SKILL]			= new CSkillModule(this);
-
+	m_MoudleList[MT_MAIL]           = new CMailModule(this);
+	m_MoudleList[MT_FRIEND]         = new CFriendModule(this);
 	return TRUE;
 }
 
@@ -185,51 +206,53 @@ BOOL CPlayerObject::DestroyAllModule()
 	}
 
 	m_MoudleList.clear();
+
 	return TRUE;
 }
 
 BOOL CPlayerObject::SendMsgProtoBuf(UINT32 dwMsgID, const google::protobuf::Message& pdata)
 {
-	ERROR_RETURN_FALSE(m_dwProxyConnID != 0);
+	if (m_dwProxyConnID == 0)
+	{
+		CLog::GetInstancePtr()->LogError("Error SendMsgProtoBuf Failed m_dwProxyConnID==0 MessageID:%d, RoleID:%ld", dwMsgID, m_u64ID);
+		return FALSE;
+	}
 
-	return ServiceBase::GetInstancePtr()->SendMsgProtoBuf(m_dwProxyConnID, dwMsgID, GetObjectID(), m_dwClientConnID, pdata);
+	return ServiceBase::GetInstancePtr()->SendMsgProtoBuf(m_dwProxyConnID, dwMsgID, GetRoleID(), m_dwClientConnID, pdata);
 }
 
 BOOL CPlayerObject::SendMsgRawData(UINT32 dwMsgID, const char* pdata, UINT32 dwLen)
 {
-	ERROR_RETURN_FALSE(m_dwProxyConnID != 0);
+	if (m_dwProxyConnID == 0)
+	{
+		CLog::GetInstancePtr()->LogError("Error SendMsgRawData MessageID:%d, RoleID:%ld", dwMsgID, m_u64ID);
+		return FALSE;
+	}
 
-	return ServiceBase::GetInstancePtr()->SendMsgRawData(m_dwProxyConnID, dwMsgID, GetObjectID(), m_dwClientConnID, pdata, dwLen);
+	return ServiceBase::GetInstancePtr()->SendMsgRawData(m_dwProxyConnID, dwMsgID, GetRoleID(), m_dwClientConnID, pdata, dwLen);
 }
 
 BOOL CPlayerObject::SendMsgToScene(UINT32 dwMsgID, const google::protobuf::Message& pdata)
 {
 	UINT32 dwConnID = CGameSvrMgr::GetInstancePtr()->GetConnIDBySvrID(m_dwCopySvrID);
 
-	ERROR_RETURN_FALSE(dwConnID != 0);
+	if (dwConnID == 0)
+	{
+		CLog::GetInstancePtr()->LogError("Error SendMsgToScene MessageID:%d, CopySvrID:%ld", dwMsgID, m_dwCopySvrID);
+		return FALSE;
+	}
 
 	return ServiceBase::GetInstancePtr()->SendMsgProtoBuf(dwConnID, dwMsgID, m_u64ID, m_dwCopyGuid, pdata);
-}
-
-BOOL CPlayerObject::OnAllModuleOK()
-{
-	ERROR_RETURN_FALSE(m_u64ID != 0);
-	CalcFightDataInfo();
-	SendRoleLoginAck();
-	CGameSvrMgr::GetInstancePtr()->SendPlayerToMainCity(m_u64ID, GetCityCopyID());
-	m_dwCopyID = 0;
-	m_dwCopyGuid = 0;
-	return TRUE;
 }
 
 UINT32 CPlayerObject::CheckCopyConditoin(UINT32 dwCopyID)
 {
 	return TRUE;
 	StCopyInfo* pCopyInfo = CStaticData::GetInstancePtr()->GetCopyInfo(dwCopyID);
-	ERROR_RETURN_CODE(m_u64ID != 0, MRC_INVALID_COPYID);
+	ERROR_RETURN_VALUE(m_u64ID != 0, MRC_INVALID_COPYID);
 
 	CRoleModule* pRoleModule = (CRoleModule*)GetModuleByType(MT_ROLE);
-	ERROR_RETURN_CODE(pRoleModule != NULL, MRC_UNKNOW_ERROR);
+	ERROR_RETURN_VALUE(pRoleModule != NULL, MRC_UNKNOW_ERROR);
 
 	if(!pRoleModule->CheckActionEnough(pCopyInfo->dwCostActID, pCopyInfo->dwCostActNum))
 	{
@@ -237,10 +260,10 @@ UINT32 CPlayerObject::CheckCopyConditoin(UINT32 dwCopyID)
 	}
 
 	CCopyModule* pCopyModule = (CCopyModule*)GetModuleByType(MT_COPY);
-	ERROR_RETURN_CODE(pCopyModule != NULL, MRC_UNKNOW_ERROR);
+	ERROR_RETURN_VALUE(pCopyModule != NULL, MRC_UNKNOW_ERROR);
 
 	CopyDataObject* pObject = pCopyModule->GetCopyData(dwCopyID);
-	ERROR_RETURN_CODE(pObject != NULL, MRC_UNKNOW_ERROR);
+	ERROR_RETURN_VALUE(pObject != NULL, MRC_UNKNOW_ERROR);
 
 	if(pObject->m_dwBattleCnt >= pCopyInfo->dwBattleTimes)
 	{
@@ -255,9 +278,6 @@ BOOL CPlayerObject::SendIntoSceneNotify(UINT32 dwCopyGuid, UINT32 dwCopyID, UINT
 	ERROR_RETURN_FALSE(dwCopyID != 0);
 	ERROR_RETURN_FALSE(dwCopyGuid != 0);
 	ERROR_RETURN_FALSE(dwSvrID != 0);
-
-	ERROR_RETURN_FALSE(m_dwCopyGuid != dwCopyGuid);
-	ERROR_RETURN_FALSE(m_dwCopyID != dwCopyID);
 
 	NotifyIntoScene Nty;
 	Nty.set_copyid(dwCopyID);
@@ -285,19 +305,14 @@ BOOL CPlayerObject::SetConnectID(UINT32 dwProxyID, UINT32 dwClientID)
 	return TRUE;
 }
 
-
 CModuleBase* CPlayerObject::GetModuleByType(UINT32 dwModuleType)
 {
-	if(dwModuleType >= (UINT32)m_MoudleList.size())
-	{
-		LOG_ERROR;
-		return NULL;
-	}
+	ERROR_RETURN_NULL(dwModuleType < (UINT32)m_MoudleList.size());
 
 	return m_MoudleList.at(dwModuleType);
 }
 
-UINT64 CPlayerObject::GetObjectID()
+UINT64 CPlayerObject::GetRoleID()
 {
 	return m_u64ID;
 }
@@ -310,11 +325,19 @@ UINT32 CPlayerObject::GetCityCopyID()
 	return pModule->m_pRoleDataObject->m_CityCopyID;
 }
 
+UINT64 CPlayerObject::GetAccountID()
+{
+	CRoleModule* pModule = (CRoleModule*)GetModuleByType(MT_ROLE);
+	ERROR_RETURN_FALSE(pModule != NULL);
+	ERROR_RETURN_FALSE(pModule->m_pRoleDataObject != NULL);
+	return pModule->m_pRoleDataObject->m_uAccountID;
+}
+
 UINT32 CPlayerObject::GetActorID()
 {
 	CRoleModule* pModule = (CRoleModule*)GetModuleByType(MT_ROLE);
 
-	ERROR_RETURN_CODE(pModule != NULL, 0);
+	ERROR_RETURN_VALUE(pModule != NULL, 0);
 
 	return pModule->GetActorID();
 }
@@ -323,7 +346,7 @@ CHAR* CPlayerObject::GetName()
 {
 	CRoleModule* pModule = (CRoleModule*)GetModuleByType(MT_ROLE);
 
-	ERROR_RETURN_CODE(pModule != NULL, 0);
+	ERROR_RETURN_VALUE(pModule != NULL, 0);
 
 	return pModule->GetName();
 }
@@ -332,9 +355,38 @@ UINT32 CPlayerObject::GetCarrerID()
 {
 	CRoleModule* pModule = (CRoleModule*)GetModuleByType(MT_ROLE);
 
-	ERROR_RETURN_CODE(pModule != NULL, 0);
+	ERROR_RETURN_VALUE(pModule != NULL, 0);
 
 	return pModule->GetCarrerID();
+}
+
+INT64 CPlayerObject::GetProperty(ERoleProperty ePropertyID)
+{
+	INT32 nModuleID = ePropertyID / 100;
+
+	if (nModuleID < MT_ROLE || nModuleID >= MT_END)
+	{
+		CLog::GetInstancePtr()->LogError("CPlayerObject::GetProperty Error Inavlie PropertyID:%d", ePropertyID);
+		return 0;
+	}
+
+	CModuleBase* pModule = GetModuleByType(nModuleID);
+	if (pModule == NULL)
+	{
+		return 0;
+	}
+
+	return pModule->GetProperty(ePropertyID);
+}
+
+UINT64 CPlayerObject::GetRoomID()
+{
+	return m_uRoomID;
+}
+
+VOID CPlayerObject::SetRoomID(UINT64 uRoomID)
+{
+	m_uRoomID = uRoomID;
 }
 
 BOOL CPlayerObject::SendRoleLoginAck()
@@ -355,11 +407,11 @@ BOOL CPlayerObject::SendRoleLoginAck()
 	return TRUE;
 }
 
-BOOL CPlayerObject::SendObjectChangeNtf(UINT32 dwChangeType, UINT64 uIntValue1, UINT64 uIntValue2, std::string strValue)
+BOOL CPlayerObject::SendPlayerChange(EChangeType eChangeType, UINT64 uIntValue1, UINT64 uIntValue2, std::string strValue)
 {
 	ObjectChangeNotify Ntf;
-	Ntf.set_roleid(GetObjectID());
-	Ntf.set_changetype(dwChangeType);
+	Ntf.set_roleid(GetRoleID());
+	Ntf.set_changetype(eChangeType);
 	Ntf.set_intvalue1(uIntValue1);
 	Ntf.set_intvalue2(uIntValue2);
 	if (!strValue.empty() && strValue.size() > 0)
@@ -367,16 +419,16 @@ BOOL CPlayerObject::SendObjectChangeNtf(UINT32 dwChangeType, UINT64 uIntValue1, 
 		Ntf.set_strvalue(strValue);
 	}
 
-	SendMsgToScene(MSG_SCENEOBJ_CHAGE_NTF, Ntf);
+	SendMsgToScene(MSG_PLAYER_CHAGE_NTF, Ntf);
 
 	return TRUE;
 }
 
-BOOL CPlayerObject::ToTransferData( TransferDataReq& Req )
+BOOL CPlayerObject::ToTransferData(TransferDataItem* pTransItem)
 {
 	CRoleModule* pModule = (CRoleModule*)GetModuleByType(MT_ROLE);
 
-	TransRoleData* pRoleData = Req.mutable_roledata();
+	TransRoleData* pRoleData = pTransItem->mutable_roledata();
 	ERROR_RETURN_FALSE(pRoleData != NULL);
 
 	pRoleData->set_roleid(m_u64ID);
@@ -384,6 +436,15 @@ BOOL CPlayerObject::ToTransferData( TransferDataReq& Req )
 	pRoleData->set_actorid(pModule->GetActorID());
 	pRoleData->set_level(pModule->m_pRoleDataObject->m_Level);
 	pRoleData->set_name(pModule->m_pRoleDataObject->m_szName);
+
+	CMountModule* pMountModule = (CMountModule*)GetModuleByType(MT_MOUNT);
+	ERROR_RETURN_FALSE(pMountModule != NULL);
+
+	MountDataObject* pMountData = pMountModule->GetCurrentMountData();
+	if (pMountData != NULL)
+	{
+		pRoleData->set_mountid(pMountData->m_MountID);
+	}
 
 	for(int i = 0; i < PROPERTY_NUM; i++)
 	{
@@ -418,6 +479,14 @@ BOOL CPlayerObject::ToTransferData( TransferDataReq& Req )
 	}
 
 	CPetModule* pPetModule = (CPetModule*)GetModuleByType(MT_PET);
+	ERROR_RETURN_FALSE(pPetModule != NULL);
+	pPetModule->ToTransferData(pTransItem);
+
+	CPartnerModule* pPartnerModule = (CPartnerModule*)GetModuleByType(MT_PARTNER);
+	ERROR_RETURN_FALSE(pPartnerModule != NULL);
+	pPartnerModule->ToTransferData(pTransItem);
+
+
 
 
 	return TRUE;
@@ -434,11 +503,16 @@ BOOL CPlayerObject::IsOnline()
 {
 	if (m_IsOnline && m_dwProxyConnID == 0)
 	{
-		ASSERT_FAIELD;
 		return FALSE;
 	}
 
 	return m_IsOnline;
+}
+
+BOOL CPlayerObject::SetOnline(BOOL bOnline)
+{
+	m_IsOnline = TRUE;
+	return TRUE;
 }
 
 BOOL CPlayerObject::NotifyChange()
@@ -479,18 +553,24 @@ BOOL CPlayerObject::CalcFightDataInfo()
 	return TRUE;
 }
 
-BOOL CPlayerObject::ClearCopyState()
+BOOL CPlayerObject::ClearCopyStatus()
 {
 	m_dwCopyGuid = 0;			//当前的副本ID
 	m_dwCopyID = 0;				//当前的副本类型
 	m_dwCopySvrID = 0;			//副本服务器的ID
-	m_dwToCopyGuid = 0;			//正在前往的副本ID
-	m_dwToCopyID = 0;			//正在前往的副本类型
-	m_dwToCopySvrID = 0;		//正在前往的副本服ID
-
+	m_bMainCity = FALSE;
 	return TRUE;
 }
 
+BOOL CPlayerObject::SetCopyStatus(UINT32 dwCopyGuid, UINT32 dwCopyID, UINT32 dwCopySvrID, BOOL bMainCity)
+{
+	m_dwCopyID = dwCopyID;
+	m_dwCopyGuid = dwCopyGuid;
+	m_dwCopySvrID = dwCopySvrID;
+	m_bMainCity = bMainCity;
+
+	return TRUE;
+}
 
 
 

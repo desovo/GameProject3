@@ -3,6 +3,7 @@
 #include "GameService.h"
 #include "DataPool.h"
 #include "GlobalDataMgr.h"
+#include "../Message/Game_Define.pb.h"
 
 CGuildManager::CGuildManager()
 {
@@ -21,7 +22,7 @@ CGuildManager* CGuildManager::GetInstancePtr()
 	return &_StaticMgr;
 }
 
-BOOL CGuildManager::LoadAllGuildData(CppMySQL3DB& tDBConnection)
+BOOL CGuildManager::LoadData(CppMySQL3DB& tDBConnection)
 {
 	CppMySQLQuery QueryResult = tDBConnection.querySQL("SELECT * FROM guild");
 	while(!QueryResult.eof())
@@ -79,11 +80,12 @@ CGuild* CGuildManager::CreateGuild(UINT64 uRoleID, std::string& strName, INT32 n
 	pGuild->m_pGuildData->m_uGuid = CGlobalDataManager::GetInstancePtr()->MakeNewGuid();
 	strncpy(pGuild->m_pGuildData->m_szName, strName.c_str(), CommonFunc::Min(GUILD_NAME_LEN, (INT32)strName.size()));
 	pGuild->m_pGuildData->Unlock();
+	m_mapGulidData.insert(std::make_pair(pGuild->m_pGuildData->m_uGuid, pGuild));
 
 	MemberDataObject* pMemberObj = DataPool::CreateObject<MemberDataObject>(ESD_GUILD_MEMBER, TRUE);
 	pMemberObj->Lock();
 	pMemberObj->m_uRoleID = uRoleID;
-	pMemberObj->m_dwJoinTime = CommonFunc::GetCurrTime();
+	pMemberObj->m_uJoinTime = CommonFunc::GetCurrTime();
 	pMemberObj->m_uGuildID = pGuild->m_pGuildData->m_uGuid;
 	pMemberObj->m_Pos = EGP_LEADER;
 	pMemberObj->Unlock();

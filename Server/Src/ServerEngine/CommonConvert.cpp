@@ -19,7 +19,11 @@ INT64 CommonConvert::StringToInt64(char* pStr)
 		return 0;
 	}
 
-	return atol(pStr);
+#ifdef WIN32
+	return _atoi64(pStr);
+#else
+	return atoll(pStr);
+#endif
 }
 
 INT64 CommonConvert::StringToInt64(const char* pStr)
@@ -157,6 +161,54 @@ BOOL CommonConvert::StringToPos(char* pStr, FLOAT& x, FLOAT& y, FLOAT& z)
 	}
 	*pPos = 0;
 	z = CommonConvert::StringToFloat(pOldPos);
+
+	return TRUE;
+}
+
+BOOL CommonConvert::StringToBox(char* pStr, FLOAT& left, FLOAT& top, FLOAT& right, FLOAT& bottom)
+{
+	if (pStr == NULL)
+	{
+		return FALSE;
+	}
+
+	char szTempBuf[256] = { 0 };
+	strncpy(szTempBuf, pStr, strlen(pStr));
+
+	char* pPos = strchr(szTempBuf, ',');
+	if (pPos == NULL)
+	{
+		return FALSE;
+	}
+	*pPos = 0;
+	left = CommonConvert::StringToFloat(szTempBuf + 1);
+
+	char* pOldPos = pPos + 1;
+	pPos = strchr(pPos + 1, ',');
+	if (pPos == NULL)
+	{
+		return FALSE;
+	}
+	*pPos = 0;
+	top = CommonConvert::StringToFloat(pOldPos);
+
+	pOldPos = pPos + 1;
+	pPos = strchr(pPos + 1, ',');
+	if (pPos == NULL)
+	{
+		return FALSE;
+	}
+	*pPos = 0;
+	right = CommonConvert::StringToFloat(pOldPos);
+
+	pOldPos = pPos + 1;
+	pPos = strchr(pPos + 1, ')');
+	if (pPos == NULL)
+	{
+		return FALSE;
+	}
+	*pPos = 0;
+	bottom = CommonConvert::StringToFloat(pOldPos);
 
 	return TRUE;
 }
@@ -336,48 +388,56 @@ BOOL CommonConvert::SpliteString(std::string strSrc,  char cDelim, std::vector<s
 	return TRUE;
 }
 
+/*
 std::wstring CommonConvert::Utf8_To_Unicode( std::string strSrc )
 {
-	wchar_t wBuff[102400] = {0};
 #ifdef WIN32
+	wchar_t wBuff[102400] = { 0 };
 	MultiByteToWideChar(CP_UTF8, 0, strSrc.c_str(), -1, wBuff, 102400);
 	std::wstring strRet = wBuff;
 	return strRet;
 #else
+	std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+	return converter.from_bytes(strSrc.c_str());
 #endif
 }
 
 std::string CommonConvert::Unicode_To_Uft8( std::wstring wstrValue )
 {
-	CHAR sBuff[102400] = {0};
 #ifdef WIN32
+	CHAR sBuff[102400] = { 0 };
 	WideCharToMultiByte(CP_UTF8, 0, wstrValue.c_str(), -1, sBuff, 102400, NULL, NULL);
 	std::string strRet = sBuff;
 	return strRet;
 #else
+	std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+	return converter.to_bytes(wstrValue.c_str());
+
 #endif
 }
 
 std::wstring CommonConvert::Ansi_To_Unicode( std::string strSrc )
 {
 	wchar_t wBuff[102400] = {0};
-	CHAR sBuff[102400] = {0};
 #ifdef WIN32
 	MultiByteToWideChar(CP_ACP,  0, strSrc.c_str(), -1, wBuff, 102400);
 	std::wstring strRet = wBuff;
 	return strRet;
 #else
+	setlocale(LC_CTYPE, "chs");
+	std::mbstowcs(wBuff, strSrc.c_str(), 102400);
 #endif
 }
 
 std::string CommonConvert::Unicode_To_Ansi( std::wstring strValue )
 {
-	CHAR sBuff[102400] = {0};
+	CHAR sBuff[102400] = { 0 };
 #ifdef WIN32
 	WideCharToMultiByte(CP_ACP, 0, strValue.c_str(), -1, sBuff, 102400, NULL, NULL);
 	return std::string(sBuff);
 #else
-
+	setlocale(LC_CTYPE, "chs");
+	std::wcstombs(sBuff, strValue.c_str(), 102400);
 #endif
 }
 
@@ -391,6 +451,7 @@ std::string CommonConvert::Utf8_To_Ansi( std::string strSrc )
 	std::string strRet = sBuff;
 	return strRet;
 #else
+
 #endif
 }
 
@@ -406,6 +467,7 @@ std::string CommonConvert::Ansi_To_Uft8( std::string strSrc )
 #else
 #endif
 }
+*/
 
 BOOL CommonConvert::IsTextUTF8(const char* str, UINT32 length)
 {
@@ -471,7 +533,8 @@ BOOL CommonConvert::IsTextUTF8(const char* str, UINT32 length)
 	return TRUE;
 }
 
-UINT32 CommonConvert::VersionToInt( std::string& strVersion )
+
+UINT32 CommonConvert::VersionToInt(const std::string& strVersion )
 {
 	INT32 nValue[3] = { 0 };
 	StringToVector(strVersion.c_str(), nValue, 3, '.');
@@ -499,6 +562,33 @@ INT32 CommonConvert::CountSymbol(char* pStr, char cSymbol )
 	}
 
 	return nCount;
+}
+
+BOOL CommonConvert::HasSymbol(const char* pStr, const char* pszSymbol)
+{
+	if (pStr == NULL || pszSymbol == NULL)
+	{
+		return FALSE;
+	}
+
+	const char* pSym = pszSymbol;
+	while (*pSym != '\0')
+	{
+		const char* pTemp = pStr;
+		while (*pTemp != '\0')
+		{
+			if (*pTemp == *pSym)
+			{
+				return TRUE;
+			}
+
+			pTemp += 1;
+		}
+
+		pSym += 1;
+	}
+
+	return FALSE;
 }
 
 BOOL CommonConvert::StringTrim(std::string& strValue)

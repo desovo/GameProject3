@@ -6,34 +6,22 @@
 #include "../Message/Msg_Move.pb.h"
 #include "../Message/Msg_ID.pb.h"
 #include "../Message/Msg_RetCode.pb.h"
-#include "../StaticData/StaticData.h"
+#include "StaticData.h"
 #include "../Message/Game_Define.pb.h"
 
 CSceneObject::CSceneObject(UINT64 uGuid, CScene* pScene)
 {
 	m_uGuid = uGuid;
+
 	m_pScene = pScene;
 
-	m_dwProxyConnID		= 0;
-	m_dwClientConnID	= 0;
-	m_dwObjectStatus	= 0;
-	m_bEnter			= FALSE;
-	m_dwActorID			= 0;
-	m_dwObjType			= 0;
-	m_dwCamp			= 0;
-	m_bDataChange		= FALSE;
-	m_uLastMoveTick		= 0;
-	m_dwActionID        = AT_IDLE;
-	m_pActorInfo        = NULL;
-	memset(m_Equips, 0, sizeof(m_Equips));
-	memset(m_Propertys, 0, sizeof(m_Propertys));
-	m_SkillObject.SetCastObject(this);
+	Reset();
 }
 
 CSceneObject::~CSceneObject()
 {
-	m_pScene = NULL;
-	m_pActorInfo = NULL;
+	Reset();
+
 	ClearBuff();
 
 	m_vtNormals.clear();
@@ -51,14 +39,22 @@ BOOL CSceneObject::SetConnectID(UINT32 dwProxyID, UINT32 dwClientID)
 
 BOOL CSceneObject::SendMsgProtoBuf(UINT32 dwMsgID, const google::protobuf::Message& pdata)
 {
-	ERROR_RETURN_FALSE(m_dwProxyConnID != 0);
+	if (m_dwProxyConnID == 0)
+	{
+		CLog::GetInstancePtr()->LogError("Error SendMsgProtoBuf MessageID:%d", dwMsgID);
+		return FALSE;
+	}
 
 	return ServiceBase::GetInstancePtr()->SendMsgProtoBuf(m_dwProxyConnID, dwMsgID, GetObjectGUID(), m_dwClientConnID, pdata);
 }
 
 BOOL CSceneObject::SendMsgRawData(UINT32 dwMsgID, const char* pdata, UINT32 dwLen)
 {
-	ERROR_RETURN_FALSE(m_dwProxyConnID != 0);
+	if (m_dwProxyConnID == 0)
+	{
+		CLog::GetInstancePtr()->LogError("Error SendMsgRawData MessageID:%d", dwMsgID);
+		return FALSE;
+	}
 
 	return ServiceBase::GetInstancePtr()->SendMsgRawData(m_dwProxyConnID, dwMsgID, GetObjectGUID(), m_dwClientConnID, pdata, dwLen);
 }
@@ -84,45 +80,32 @@ UINT32 CSceneObject::GetMp()
 	return m_Propertys[EA_MP];
 }
 
-VOID CSceneObject::AddHp( UINT32 dwValue )
+VOID CSceneObject::ChangeHp( INT32 nValue )
 {
-	m_Propertys[EA_HP] += dwValue;
-	m_bDataChange = TRUE;
-}
-
-VOID CSceneObject::SubHp( UINT32 dwValue )
-{
-	m_Propertys[EA_HP] -= dwValue;
-
-	if(m_Propertys[EA_HP] < 0)
+	m_Propertys[EA_HP] += nValue;
+	if (m_Propertys[EA_HP] < 0)
 	{
 		m_Propertys[EA_HP] = 0;
 	}
-
-	m_bDataChange = TRUE;
+	m_ChangeFlag.bBase = 1;
 }
 
-VOID CSceneObject::AddMp( UINT32 dwValue )
-{
-	m_Propertys[EA_MP] += dwValue;
-	m_bDataChange = TRUE;
-}
 
-VOID CSceneObject::SubMp( UINT32 dwValue )
+VOID CSceneObject::ChangeMp( INT32 nValue )
 {
-	m_Propertys[EA_MP] -= dwValue;
-
-	if(m_Propertys[EA_MP] < 0)
+	m_Propertys[EA_MP] += nValue;
+	if (m_Propertys[EA_MP] < 0)
 	{
 		m_Propertys[EA_MP] = 0;
 	}
-
-	m_bDataChange = TRUE;
+	m_ChangeFlag.bBase = 1;
 }
+
+
 
 BOOL CSceneObject::IsChanged()
 {
-	return m_bDataChange;
+	return m_ChangeFlag.dwValue != 0;
 }
 
 UINT64 CSceneObject::GetObjectGUID()
@@ -145,6 +128,17 @@ UINT32 CSceneObject::GetCamp()
 	return m_dwCamp;
 }
 
+UINT64 CSceneObject::GetControllerID()
+{
+	return m_uControlerID;
+}
+
+VOID CSceneObject::SetControllerID(UINT64 uID)
+{
+	m_uControlerID = uID;
+	m_ChangeFlag.bControl = 1;
+}
+
 BOOL CSceneObject::IsConnected()
 {
 	return (m_dwClientConnID != 0) && (m_dwProxyConnID != 0);
@@ -160,6 +154,22 @@ VOID CSceneObject::SetEnterCopy()
 	m_bEnter = TRUE;
 }
 
+VOID CSceneObject::SetActionID(UINT32 dwActionID)
+{
+	if (dwActionID != m_dwActionID)
+	{
+		m_dwActionID = dwActionID;
+		m_ChangeFlag.bAction = 1;
+	}
+
+	return;
+}
+
+UINT32 CSceneObject::GetActionID()
+{
+	return m_dwActionID;
+}
+
 BOOL CSceneObject::SaveNewData( ObjectNewNty& Nty )
 {
 	NewItem* pItem = Nty.add_newlist();
@@ -167,8 +177,7 @@ BOOL CSceneObject::SaveNewData( ObjectNewNty& Nty )
 	pItem->set_actionid(m_dwActionID);
 	pItem->set_objtype(m_dwObjType);
 	pItem->set_actorid(m_dwActorID);
-	pItem->set_buffstatus(m_dwBuffStatus);
-	pItem->set_objectstatus(m_dwObjectStatus);
+	pItem->set_objectstatus(m_dwStatus);
 	pItem->set_name(m_strName);
 	pItem->set_level(m_dwLevel);
 	pItem->set_summonid(m_uSummonerID);
@@ -184,6 +193,15 @@ BOOL CSceneObject::SaveNewData( ObjectNewNty& Nty )
 	pItem->set_mpmax(m_Propertys[EA_MP_MAX]);
 	pItem->set_speed(m_Propertys[EA_SPEED]);
 	pItem->set_camp(m_dwCamp);
+	if (m_bRiding)
+	{
+		pItem->set_mountid(m_dwMountID);
+	}
+	else
+	{
+		pItem->set_mountid(0 - m_dwMountID);
+	}
+
 	for (int i = 0; i < EQUIP_MAX_NUM; i++)
 	{
 		pItem->add_equips(m_Equips[i]);
@@ -205,7 +223,7 @@ BOOL CSceneObject::SaveNewData( ObjectNewNty& Nty )
 		pSkillitem->set_skillid(m_vtSpecials.at(i).dwSkillID);
 	}
 
-	m_bDataChange = FALSE;
+	m_ChangeFlag.dwValue = 0;
 
 	return TRUE;
 }
@@ -214,45 +232,123 @@ BOOL CSceneObject::SaveUpdateData(ObjectActionNty& Nty)
 {
 	ActionNtyItem* pItem = Nty.add_actionlist();
 	pItem->set_objectguid(m_uGuid);
-	pItem->set_actorid(m_dwActorID);
-	pItem->set_actionid(m_dwActionID);
-	pItem->set_buffstatus(m_dwBuffStatus);
-	pItem->set_objectstatus(m_dwObjectStatus);
-	pItem->set_level(m_dwLevel);
-	pItem->set_controlerid(m_uControlerID);
-	pItem->set_hostx(m_Pos.m_x);
-	pItem->set_hosty(m_Pos.m_y);
-	pItem->set_hostz(m_Pos.m_z);
-	pItem->set_hostft(m_ft);
 	pItem->set_hp(m_Propertys[EA_HP]);
 	pItem->set_mp(m_Propertys[EA_MP]);
-	pItem->set_hpmax(m_Propertys[EA_HP_MAX]);
-	pItem->set_mpmax(m_Propertys[EA_MP_MAX]);
-	pItem->set_speed(m_Propertys[EA_SPEED]);
-	pItem->set_camp(m_dwCamp);
-	for (int i = 0; i < EQUIP_MAX_NUM; i++)
+	if (m_ChangeFlag.bBase)
 	{
-		pItem->add_equips(m_Equips[i]);
+		pItem->set_hpmax(m_Propertys[EA_HP_MAX]);
+		pItem->set_mpmax(m_Propertys[EA_MP_MAX]);
+		pItem->set_speed(m_Propertys[EA_SPEED]);
+		pItem->set_hostx(m_Pos.m_x);
+		pItem->set_hosty(m_Pos.m_y);
+		pItem->set_hostz(m_Pos.m_z);
+		pItem->set_hostft(m_ft);
+		pItem->set_objectstatus(m_dwStatus);
 	}
 
-	m_bDataChange = FALSE;
+	if (m_ChangeFlag.bEquip)
+	{
+		for (int i = 0; i < EQUIP_MAX_NUM; i++)
+		{
+			pItem->add_equips(m_Equips[i]);
+		}
+	}
+
+	if (m_ChangeFlag.bActor)
+	{
+		pItem->set_actorid(m_dwActorID);
+	}
+
+	if (m_ChangeFlag.bBuff)
+	{
+	}
+
+	if (m_ChangeFlag.bAction)
+	{
+		pItem->set_actionid(m_dwActionID);
+	}
+
+	if (m_ChangeFlag.bLevel)
+	{
+		pItem->set_level(m_dwLevel);
+	}
+
+	if (m_ChangeFlag.bControl)
+	{
+		pItem->set_controlerid(m_uControlerID);
+	}
+
+	if (m_ChangeFlag.bCamp)
+	{
+		pItem->set_camp(m_dwCamp);
+	}
+
+	if (m_ChangeFlag.bMount)
+	{
+		if (m_bRiding)
+		{
+			pItem->set_mountid(m_dwMountID);
+		}
+		else
+		{
+			pItem->set_mountid(0 - m_dwMountID);
+		}
+
+	}
+
+	m_ChangeFlag.dwValue = 0;
+
+	return TRUE;
+}
+
+BOOL CSceneObject::Reset()
+{
+	m_dwProxyConnID     = 0;
+	m_dwClientConnID    = 0;
+	m_dwStatus          = 0;
+	m_bEnter            = FALSE;
+	m_dwActorID         = 0;
+	m_dwObjType         = OT_NONE;
+	m_dwCamp            = 0;
+	m_ChangeFlag.dwValue = 0;
+	m_uLastMoveTick     = 0;
+	m_dwActionID        = AT_IDLE;
+	m_pActorInfo        = NULL;
+	m_bRiding           = FALSE;
+	m_bRobot            = FALSE;
+	m_dwMountID         = 0;
+	m_nBattleResult     = ECR_NONE;
+	m_bIsMonsCheck      = FALSE;
+	m_bIsCampCheck      = TRUE;
+	m_uHostGuid         = 0;
+	m_uControlerID      = 0;
+	m_uSummonerID       = 0;
+	m_uPetGuid          = 0;
+	m_uPartnerGuid      = 0;
+
+	memset(m_Equips, 0, sizeof(m_Equips));
+
+	memset(m_Propertys, 0, sizeof(m_Propertys));
+
+	m_SkillObject.SetCastObject(this);
+
 	return TRUE;
 }
 
 BOOL CSceneObject::IsDead()
 {
-	return (m_dwObjectStatus & EOS_DEAD) > 0;
+	return (m_dwStatus & EOS_DEAD) > 0;
 }
 
 BOOL CSceneObject::SetDead(BOOL bDead)
 {
 	if (bDead)
 	{
-		m_dwObjectStatus |= EOS_DEAD;
+		m_dwStatus |= EOS_DEAD;
 	}
 	else
 	{
-		m_dwObjectStatus &= ~EOS_DEAD;
+		m_dwStatus &= ~EOS_DEAD;
 	}
 
 	return TRUE;
@@ -357,16 +453,16 @@ BOOL CSceneObject::IsInCircle(Vector3D hitPoint, float radius, float height)
 	return TRUE;
 }
 
-BOOL CSceneObject::IsInSquare(Vector3D hitPoint, FLOAT hitDir, float length, float width)
+BOOL CSceneObject::IsInSquare(Vector3D hitPoint, FLOAT hitDegree, float length, float width)
 {
 	float radius = 1.0f; //玩家自身的半径
 
 	CPoint2D A(-width / 2, -length / 2), B(-width / 2, length / 2), C(width / 2, length / 2), D(width / 2, -length / 2);
 
-	A.Rotate(hitDir * DEG_TO_RAD);
-	B.Rotate(hitDir * DEG_TO_RAD);
-	C.Rotate(hitDir * DEG_TO_RAD);
-	D.Rotate(hitDir * DEG_TO_RAD);
+	A.Rotate(hitDegree * DEG_TO_RAD);
+	B.Rotate(hitDegree * DEG_TO_RAD);
+	C.Rotate(hitDegree * DEG_TO_RAD);
+	D.Rotate(hitDegree * DEG_TO_RAD);
 
 	CPoint2D rolept(m_Pos.m_x, m_Pos.m_z);
 
@@ -393,7 +489,7 @@ BOOL CSceneObject::IsInSquare(Vector3D hitPoint, FLOAT hitDir, float length, flo
 	return FALSE;
 }
 
-BOOL CSceneObject::IsInSector(Vector3D hitPoint, float hitDir, float radius, float hAngle)
+BOOL CSceneObject::IsInSector(Vector3D hitPoint, float hitDegree, float radius, float hAngle)
 {
 	float maxDis = radius;// +target.Radius;
 	if (m_Pos.Distance2D(hitPoint) > maxDis)
@@ -402,18 +498,51 @@ BOOL CSceneObject::IsInSector(Vector3D hitPoint, float hitDir, float radius, flo
 	}
 
 	Vector3D vtDir = m_Pos - hitPoint;
-
-	//if (vtDir.AngleBetween2D(hitDir) > hAngle / 2)
-	//{
-	//	return FALSE;
-	//}
+	float fAttack = vtDir.ToDegreesAngle();
+	float fDiff = fAttack - hitDegree;
+	if (fDiff > hAngle / 2)
+	{
+		return FALSE;
+	}
 
 	return TRUE;
 }
 
+VOID CSceneObject::SetBattleResult(ECopyResult nBattleResult)
+{
+	m_nBattleResult = nBattleResult;
+}
+
+ECopyResult CSceneObject::GetBattleResult()
+{
+	return m_nBattleResult;
+}
+
 BOOL CSceneObject::UpdatePosition(UINT64 uTick)
 {
+	if(m_dwActionID == AT_RUN)
+	{
 
+	}
+
+	if (m_dwActionID == AT_WALK)
+	{
+
+	}
+
+
+	return TRUE;
+}
+
+BOOL CSceneObject::Revive()
+{
+	SetDead(FALSE);
+
+	SetActionID(AT_IDLE);
+
+	m_Propertys[EA_HP] = m_Propertys[EA_HP_MAX];
+
+	m_Propertys[EA_MP] = m_Propertys[EA_MP_MAX];
 
 	return TRUE;
 }
@@ -433,31 +562,13 @@ INT32 CSceneObject::GetShip(CSceneObject* pTarget)
 	return ES_FRIEND;
 }
 
-BOOL CSceneObject::NotifyHitEffect(CSceneObject* pTarget, BOOL bCritHit, INT32 nHurtValue)
-{
-	HitEffectItem* pItem = m_EffectNtf.add_itemlist();
-	pItem->set_targetguid(pTarget->GetObjectGUID());
-	pItem->set_crit(bCritHit);
-	pItem->set_hurtvalue(nHurtValue);
 
-	SendMsgProtoBuf(MSG_ACTOR_HITEFFECT_NTF, m_EffectNtf);
-	m_EffectNtf.Clear();
 
-	if (pTarget->GetObjType() == OT_PLAYER && pTarget->GetObjectGUID() != GetObjectGUID())
-	{
-		pTarget->NotifyHitEffect(pTarget, bCritHit, nHurtValue);
-	}
-
-	return TRUE;
-}
-
-BOOL CSceneObject::SaveBattleResult(ResultPlayer* pResult)
+BOOL CSceneObject::SaveBattleRecord(ResultPlayer* pResult)
 {
 	pResult->set_objectid(m_uGuid);
 	pResult->set_actorid(m_dwActorID);
-// 	pResult->set_result(m_dwResult);
-// 	pResult->set_damage(m_dwDamage);
-
+	pResult->set_result(m_nBattleResult);
 	return TRUE;
 }
 
@@ -465,7 +576,30 @@ BOOL CSceneObject::ChangeEquip(INT32 nPos, UINT32 dwEquipID)
 {
 	ERROR_RETURN_FALSE(nPos > 0);
 	m_Equips[nPos - 1] = dwEquipID;
-	m_bDataChange = TRUE;
+	m_ChangeFlag.bEquip = 1;
+	return TRUE;
+}
+
+BOOL CSceneObject::ChangeMount(UINT32 dwMountID)
+{
+	m_dwMountID = dwMountID;
+	m_ChangeFlag.bMount = 1;
+	return TRUE;
+}
+
+BOOL CSceneObject::SetRiding(BOOL bRiding)
+{
+	if (m_dwMountID <= 0)
+	{
+		m_bRiding = FALSE;
+	}
+	else
+	{
+		m_bRiding = bRiding;
+	}
+
+	m_ChangeFlag.bMount = 1;
+
 	return TRUE;
 }
 
@@ -479,6 +613,11 @@ FLOAT CSceneObject::GetCurSpeed()
 	return m_pActorInfo == NULL ? 0.0f : m_pActorInfo->fDefSpeed * m_Propertys[EA_SPEED] / 10000.0f;
 }
 
+BOOL CSceneObject::IsRobot()
+{
+	return m_bRobot;
+}
+
 BOOL CSceneObject::AddBuff(UINT32 dwBuffID)
 {
 	CBuffObject* pBuffObject = new CBuffObject(this, dwBuffID);
@@ -488,6 +627,21 @@ BOOL CSceneObject::AddBuff(UINT32 dwBuffID)
 	pBuffObject->OnAddBuff();
 
 	m_mapBuff.insert(std::make_pair(dwBuffID, pBuffObject));
+
+	return TRUE;
+}
+
+BOOL CSceneObject::RemoveBuff(UINT32 dwBuffID)
+{
+	std::map<UINT32, CBuffObject*>::iterator itor = m_mapBuff.find(dwBuffID);
+	ERROR_RETURN_FALSE(itor != m_mapBuff.end());
+
+	CBuffObject* pBuffObject = itor->second;
+	ERROR_RETURN_FALSE(pBuffObject != NULL);
+
+	pBuffObject->OnRemoveBuff();
+
+	pBuffObject->SetOver();
 
 	return TRUE;
 }
@@ -534,14 +688,10 @@ BOOL CSceneObject::ClearBuff()
 INT32 CSceneObject::GetSkillLevel(UINT32 dwSkillID)
 {
 	St_SkillData* pData  = GetSkillData(dwSkillID);
-	if (pData != NULL)
-	{
-		return pData->nLevel;
-	}
 
-	ASSERT_FAIELD;
+	ERROR_RETURN_VALUE(pData != NULL, 0);
 
-	return 0;
+	return pData->nLevel;
 }
 
 BOOL CSceneObject::InitSkills(const google::protobuf::RepeatedPtrField< ::SkillItem >& vtSkills)
@@ -689,14 +839,14 @@ BOOL CSceneObject::CheckSkillCD(UINT32 dwSkillID, UINT64 uCD)
 
 UINT32 CSceneObject::ProcessSkill(const SkillCastReq& Req)
 {
-	ERROR_RETURN_CODE(m_pScene != NULL, MRC_UNKNOW_ERROR);
+	ERROR_RETURN_VALUE(m_pScene != NULL, MRC_UNKNOW_ERROR);
 
 	//取技能等级
 	INT32 nLevel = GetSkillLevel(Req.skillid());
-	ERROR_RETURN_CODE(nLevel > 0, MRC_INVALID_SKILL_ID);
+	ERROR_RETURN_VALUE(nLevel > 0, MRC_INVALID_SKILL_ID);
 
 	StSkillInfo* pSkillInfo = CStaticData::GetInstancePtr()->GetSkillInfo(Req.skillid(), nLevel);
-	ERROR_RETURN_CODE(pSkillInfo != NULL, MRC_INVALID_SKILL_ID);
+	ERROR_RETURN_VALUE(pSkillInfo != NULL, MRC_INVALID_SKILL_ID);
 
 	//3. 扣除放技能需要的东西
 	//if (GetMp() < pSkillInfo->CostMp)
@@ -726,11 +876,22 @@ UINT32 CSceneObject::ProcessSkill(const SkillCastReq& Req)
 	m_SkillObject.StopSkill(); //停止当前的技能
 
 	//技能是否可以打中指定的目标.(带有目标的技能要检查目标是否合法)
-	for (int i = 0; i < Req.targetobjects_size(); i++)
+	if (Req.targetobjects_size() > 0)
 	{
-		CSceneObject* pTempObject = m_pScene->GetSceneObject(Req.targetobjects(i));
-		ERROR_RETURN_CODE(pTempObject != NULL, MRC_INVALID_TARGET_ID);
-		m_SkillObject.AddTargetObject(pTempObject);
+		for (int i = 0; i < Req.targetobjects_size(); i++)
+		{
+			CSceneObject* pTempObject = m_pScene->GetSceneObject(Req.targetobjects(i));
+			if (pTempObject == NULL || pTempObject->IsDead())
+			{
+				continue;
+			}
+			m_SkillObject.AddTargetObject(pTempObject);
+		}
+
+		if (m_SkillObject.GetTargetNum() <= 0)
+		{
+			return MRC_INVALID_TARGET_ID;
+		}
 	}
 
 	m_pScene->BroadMessage(MSG_SKILL_CAST_NTF, Req);
@@ -740,24 +901,32 @@ UINT32 CSceneObject::ProcessSkill(const SkillCastReq& Req)
 		return MRC_UNKNOW_ERROR;
 	}
 
-	m_Pos.m_x		= Req.hostx();
-	m_Pos.m_y		= Req.hosty();
-	m_Pos.m_z		= Req.hostz();
-	m_ft			= Req.hostft();
+	m_Pos.m_x       = Req.hostx();
+	m_Pos.m_y       = Req.hosty();
+	m_Pos.m_z       = Req.hostz();
+	m_ft            = Req.hostft();
+	m_dwActionID    = AT_SKILL;
 
 	return MRC_SUCCESSED;
 }
 
 UINT32 CSceneObject::ProcessAction(const ActionReqItem& Item)
 {
-	ERROR_RETURN_CODE(m_pScene != NULL, MRC_SUCCESSED);
+	ERROR_RETURN_VALUE(m_dwActionID != AT_DEAD, MRC_SKILL_DEAD_OBJ);
+	ERROR_RETURN_VALUE(m_pScene != NULL, MRC_SUCCESSED);
 
 	m_Pos.m_x		= Item.hostx();
 	m_Pos.m_y		= Item.hosty();
 	m_Pos.m_z		= Item.hostz();
 	m_ft			= Item.hostft();
-	m_dwActionID	= Item.actionid();
-	m_bDataChange	= TRUE;
+
+	m_ChangeFlag.bBase = 1;
+
+	if (Item.actionid() != m_dwActionID)
+	{
+		m_dwActionID = Item.actionid();
+		m_ChangeFlag.bAction = 1;
+	}
 
 	return MRC_SUCCESSED;
 }

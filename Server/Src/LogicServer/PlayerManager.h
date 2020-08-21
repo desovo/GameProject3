@@ -12,18 +12,23 @@ public:
 	static CPlayerManager* GetInstancePtr();
 
 public:
-	CPlayerObject*		CreatePlayer(UINT64 u64RoleID);
+	CPlayerObject*      CreatePlayer(UINT64 u64RoleID);
 
-	CPlayerObject*		GetPlayer(UINT64 u64RoleID);
+	CPlayerObject*      GetPlayer(UINT64 u64RoleID);
 
-	CPlayerObject*		CreatePlayerByID(UINT64 u64RoleID);
+	CPlayerObject*      CreatePlayerByID(UINT64 u64RoleID);
 
-	BOOL			    ReleasePlayer(UINT64 u64RoleID);
+	INT32               GetOnlineCount();
 
-	BOOL				TryCleanPlayer();
+	BOOL                ReleasePlayer(UINT64 u64RoleID);
 
-	BOOL				BroadMessageToAll(UINT32 dwMsgID, const google::protobuf::Message& pdata);
+	BOOL                BroadMessageToAll(UINT32 dwMsgID, const google::protobuf::Message& pdata);
 
+	BOOL                ZeroTimer(UINT32 nParam);
+
+	BOOL                OnUpdate(UINT64 uTick);
+
+	BOOL                ReleaseAll();
 public:
 
 };

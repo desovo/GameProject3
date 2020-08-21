@@ -6,64 +6,13 @@ message SkillItem {
     int32  KeyPos = 3;   //强化等级
 }
 
-message CheckVersionReq {
-    string   ClientVerion   = 1;
-    int32    Channel        = 2;
+message GmStopServerReq {
+    uint32    Data        	= 1;
 }
 
-message CheckVersionAck {
-    uint32    RetCode        = 1;
-    string    ClientVerion   = 2;
+message GmStopServerAck {
+    uint32    RetCode       = 1;
 }
-
-message AccountRegReq {
-    string   AccountName = 1;
-    string   Password    = 2;
-    int32    Channel     = 3;
-    string   ClientVerion= 4;
-}
-
-message AccountRegAck {
-    uint32    RetCode      = 1;
-    uint64    AccountID    = 2; //账号ID
-}
-
-message AccountLoginReq {
-    string    AccountName    = 1;
-    string    Password       = 2;
-    int32     Channel        = 3;
-    string    ClientVerion   = 4;
-    uint32    FromChannel    = 5;
-}
-
-message AccountLoginAck {
-    uint32    RetCode        = 1;
-    uint64    AccountID      = 2;
-    int32     LastSvrID      = 3;  //上次登录SvrID
-    string    LastSvrName    = 4;
-}
-
-
-message ClientServerListReq {
-    uint64    AccountID      = 1;
-    int32     Channel        = 2; //渠道包
-    string    ClientVersion  = 3; //客户端版本号
-}
-
-
-message ClientServerNode {
-    int32    SvrID          = 1;
-    string   SvrName        = 2;
-    int32    SvrState       = 3;
-    int32    SvrFlag        = 4;
-    int32    SvrOpenTime    = 5;
-}
-
-message ClientServerListAck {
-    uint32    RetCode    = 1;
-    repeated ClientServerNode SvrNode    = 2;
-}
-
 
 message SvrRegToSvrReq {
     int32     ServerID      = 1;
@@ -78,74 +27,6 @@ message SvrRegToSvrAck {
     string    NewSvrName    = 2;
 }
 
-message SelectServerReq {
-    int32    ServerID    = 1;
-}
-
-message SelectServerAck {
-    uint32   RetCode     = 1;
-    int32    ServerID    = 2;
-    string   ServerAddr  = 3;
-    int32    ServerPort  = 4;
-    int32    LoginCode   = 5;
-}
-
-message RoleItem {
-    uint64    RoleID  = 1;
-    string    Name    = 2;
-    int32     Carrer  = 3;
-    int32     Level   = 4;
-}
-
-message RoleListReq {
-    uint64   AccountID    = 1;
-    int32    LoginCode    = 2;
-}
-
-message RoleListAck {
-    uint32    RetCode            = 1;
-    uint64    AccountID          = 2;
-    repeated  RoleItem RoleList  = 3;
-}
-
-message RoleCreateReq {
-    uint64   AccountID    = 1;
-    string   Name         = 2;
-    int32    Carrer       = 3;
-    int32    Channel      = 4;
-}
-
-message RoleCreateAck {
-    uint32    RetCode      = 1;
-    uint64    AccountID    = 2;
-    uint64    RoleID       = 3;
-    string    Name         = 4;
-    int32     Carrer       = 5;
-}
-
-message RoleDeleteReq {
-    uint64    AccountID    = 1;
-    uint64    RoleID       = 2;
-}
-
-message RoleDeleteAck {
-    uint32    RetCode = 1;
-}
-
-message RoleLoginReq {
-    uint64    AccountID    = 1;
-    uint64    RoleID       = 2;
-    int32     LoginCode    = 3;
-}
-
-message RoleLogoutReq {
-    uint64    AccountID = 1;
-}
-
-message RoleLogoutAck {
-    uint32    RetCode = 1;
-}
-
 message RoleDisconnectReq {
     uint64    AccountID    = 1;
     uint64    RoleID       = 2;
@@ -158,12 +39,16 @@ message RoleDisconnectAck {
 
 message RoleReconnectReq {
     uint64    RoleID = 1;
+    uint64    AccountID = 2;
 }
 
 message RoleReconnectAck {
     uint32    RetCode = 1;
 }
 
+message RemoveConnectNty {
+    uint64    RoleID = 1;
+}
 
 ///创建场景
 message CreateNewSceneReq{
@@ -172,8 +57,6 @@ message CreateNewSceneReq{
     int32    PlayerNum     = 3;
     uint64   CreateParam   = 4;
 }
-
-
 
 ///创建场景
 message CreateNewSceneAck{
@@ -189,7 +72,7 @@ message CreateNewSceneAck{
 ////
 message EnterSceneReq {
     uint64   RoleID      = 1;
-    int32    ServerID    = 2; //场景服ID
+    int32    ServerID    = 2;  //场景服ID
     int32    CopyGuid    = 3;  //副本实例ID
     int32    CopyID      = 4;  //副本类型ID
 }
@@ -213,20 +96,10 @@ message EnterSceneAck {
     int32    HpMax          = 15;
     int32    MpMax          = 16;
     int32    Speed          = 17;
-    repeated int32 Equips   = 18; //武器
-    repeated SkillItem Skills  = 19;//技能
+    int32    MountID        = 18;
+    repeated int32 Equips   = 19; //武器
+    repeated SkillItem Skills  = 20;//技能
 }
-
-message AbortCopyReq {
-    int32    CopyID      = 1;  //副本类型
-    int32    CopyGuid    = 2;
-    int32    ServerID    = 3;
-}
-
-message AbortCopyAck {
-    uint32    RetCode = 1;
-}
-
 
 message BackToCityReq {
     uint32    Param = 1;
@@ -245,43 +118,67 @@ message LeaveSceneAck {
     uint32    RetCode = 1;
 }
 
+message AbortSceneReq {
+    uint64   RoleID = 1;
+    int32    Reason = 2;
+}
+
+message AbortSceneAck {
+    uint32    RetCode = 1;
+}
+
+message AbortSceneNty {
+    uint64   RoleID      = 1;
+    int32    CopyID      = 2;  //副本类型
+    int32    CopyGuid    = 3;
+    int32    CopyType    = 4;
+    int32    ServerID    = 5;
+    int32    Param       = 6;
+}
+
 message TransRoleData {
-    uint64   RoleID        = 1;
-    string   Name          = 2;
-    int32    CarrerID      = 3;
-    int32    ActorID       = 4;
-    int32    Level         = 5;
-    repeated int32 Equips  = 6;
-    repeated int32 Propertys= 7;
-    repeated SkillItem Skills = 8;
+    uint64   RoleID         = 1;
+    string   Name           = 2;
+    int32    CarrerID       = 3;
+    int32    ActorID        = 4;
+    int32    Level          = 5;
+    int32    MountID        = 6;
+    int32    Robot          = 7; //是否是机器人
+    repeated int32 Equips   = 8;
+    repeated int32 Propertys= 9;
+    repeated SkillItem Skills = 10;
 }
 
 message TransPetData {
-    uint64   PetGuid      = 1;
-    int32    PetID        = 2;
-    int32    ActorID      = 3;
-    string   Name         = 4;
-    int32    Level        = 5;
-    repeated int32 Propertys= 6;
-    repeated SkillItem  Skills = 7;
+    uint64   PetGuid            = 1;
+    int32    PetID              = 2;
+    int32    ActorID            = 3;
+    string   Name               = 4;
+    int32    Level              = 5;
+    repeated int32 Propertys    = 6;
+    repeated SkillItem  Skills  = 7;
 }
 
 
 message TransPartnerData {
-    uint64   PartnerGuid    = 1;
-    int32    ParterID       = 2;
-    int32    ActorID        = 3;
-    string   Name           = 4;
-    int32    Level          = 5;
-    repeated int32 Propertys= 6;
+    uint64   PartnerGuid        = 1;
+    int32    PartnerID          = 2;
+    int32    ActorID            = 3;
+    string   Name               = 4;
+    int32    Level              = 5;
+    repeated int32 Propertys    = 6;
     repeated SkillItem  Skills  = 7;
 }
 
-message TransferDataReq {
+message TransferDataItem {
     int32               Camp        = 1;            //战场中的阵营
     TransRoleData       RoleData    = 2;
     TransPetData        PetData     = 3;
     TransPartnerData    PartnerData = 4;
+}
+
+message TransferDataReq {
+   repeated TransferDataItem TransDatas = 1;
 }
 
 message TransferDataAck {
@@ -339,9 +236,11 @@ message UseMpBottleAck {
 message ChatMessageReq {
     string    SrcName        = 1;
     uint64    SrcID          = 2;
-    int32     Channel        = 3;
-    uint64    GuildID        = 4;
-    string    Content        = 5;
+    uint64    TargetID       = 3; //目标ID
+    int32     Channel        = 4; //聊天频道
+    uint64    GuildID        = 5; //公会ID
+    string    Content        = 6;
+	
 }
 
 message ChatMessageAck {
@@ -351,23 +250,10 @@ message ChatMessageAck {
 message ChatMessageNty {
     string    SrcName        = 1;
     uint64    SrcID          = 2;
-    int32     Channel        = 3;
-    uint64    GuildID        = 4;
-    string    Content        = 5;
-}
-
-message SealAccountReq {
-    string    AccountName  = 1;
-    uint64    AccountID    = 2;
-    int32     Channel      = 3;
-    int32     SealTime     = 4;
-    bool      Seal         = 5;
-}
-
-message SealAccountAck {
-    uint32    RetCode        = 1;
-    string    AccountName    = 2;
-    uint64    AccountID      = 3; //账号ID
+    uint64    TargetID       = 3; //目标ID
+    int32     Channel        = 4;
+    uint64    GuildID        = 5;
+    string    Content        = 6;
 }
 
 message CommonReq {
@@ -387,7 +273,7 @@ message BroadMessageNotify {
 message LogicRegToLoginReq {
     int32    ServerID      = 1;
     string   ServerName    = 2;
-    string   ServerIp      = 3;
+    string   SvrInnerIp    = 3;
     int32    ServerPort    = 4;
     int32    HttpPort      = 5;
     int32    WatchPort     = 6;
@@ -396,6 +282,22 @@ message LogicRegToLoginReq {
 message LogicRegToLoginAck {
     uint32    RetCode       = 1;
     string    NewSvrName    = 2;
+}
+
+message LogicUpdateInfoReq {
+    int32     ServerID     = 1;
+    string    ServerName   = 2;
+    int32     MaxOnline    = 3;
+    int32     CurOnline    = 4;
+    int32     TotalNum     = 5;
+    int32     CacheNum     = 6;
+    int32     Status       = 7;
+    int32     DbErrCnt     = 8; //数据库写失败次数
+}
+
+message LogicUpdateInfoAck {
+    uint32    RetCode       = 1;
+    uint64    SvrOpenTime   = 2; //开服时间
 }
 
 message WatchHeartBeatReq {
@@ -478,6 +380,23 @@ message UnsetMountAck {
     uint32    RetCode    = 1;
 }
 
+
+message SetupPetReq {
+    uint64    PetGuid    = 1;
+}
+
+message SetupPetAck {
+    uint32    RetCode    = 1;
+}
+
+message UnsetPetReq {
+    uint64    PetGuid = 1;
+}
+
+message UnsetPetAck {
+    uint32    RetCode    = 1;
+}
+
 message StoreBuyReq {
     int32    StoreType = 1;
     int32    StoreID = 2;
@@ -499,9 +418,13 @@ message ObjectChangeNotify {
 
 message HitEffectItem
 {
-    uint64            TargetGUID  = 1; //目标的ID
-    int32             HurtValue   = 2; //伤害值
-    bool              Crit        = 3; //是否暴击
+    uint64            CastGuid    = 1; //施放者GUID
+    uint64            TargetGuid  = 2; //目标GUID
+    int32             HurtValue   = 3; //伤害值
+    bool              Crit        = 4; //是否暴击
+    uint32            HitActionID = 5;
+    uint32            HitEffectID = 6;
+    float             HitDistance = 7;
 }
 
 message HitEffectNtf
@@ -515,6 +438,15 @@ message UseItemReq {
 message UseItemAck {
 }
 
+message MsgGetRandomNameReq {
+    int32 Sex = 1;
+}
 
+message MsgGetRandomNameAck {
+    string Name = 1;
+}
 
+message Msg_DbErrorCountNty{
+    uint32  ErrorCount = 1;
+}
 

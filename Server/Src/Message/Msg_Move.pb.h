@@ -37,7 +37,7 @@ namespace protobuf_Msg_5fMove_2eproto {
 struct TableStruct {
   static const ::google::protobuf::internal::ParseTableField entries[];
   static const ::google::protobuf::internal::AuxillaryParseTableField aux[];
-  static const ::google::protobuf::internal::ParseTable schema[17];
+  static const ::google::protobuf::internal::ParseTable schema[21];
   static const ::google::protobuf::internal::FieldMetadata field_metadata[];
   static const ::google::protobuf::internal::SerializationTable serialization_table[];
   static const ::google::protobuf::uint32 offsets[];
@@ -77,6 +77,14 @@ void InitDefaultsHeartBeatAckImpl();
 void InitDefaultsHeartBeatAck();
 void InitDefaultsObjectDieNotifyImpl();
 void InitDefaultsObjectDieNotify();
+void InitDefaultsMsg_RidingMountReqImpl();
+void InitDefaultsMsg_RidingMountReq();
+void InitDefaultsMsg_RidingMountAckImpl();
+void InitDefaultsMsg_RidingMountAck();
+void InitDefaultsMsg_RoleRebornReqImpl();
+void InitDefaultsMsg_RoleRebornReq();
+void InitDefaultsMsg_RoleRebornAckImpl();
+void InitDefaultsMsg_RoleRebornAck();
 inline void InitDefaults() {
   InitDefaultsSkillCastReq();
   InitDefaultsSkillCastAck();
@@ -95,6 +103,10 @@ inline void InitDefaults() {
   InitDefaultsHeartBeatReq();
   InitDefaultsHeartBeatAck();
   InitDefaultsObjectDieNotify();
+  InitDefaultsMsg_RidingMountReq();
+  InitDefaultsMsg_RidingMountAck();
+  InitDefaultsMsg_RoleRebornReq();
+  InitDefaultsMsg_RoleRebornAck();
 }
 }  // namespace protobuf_Msg_5fMove_2eproto
 class ActionNtyItem;
@@ -115,6 +127,18 @@ extern HeartBeatAckDefaultTypeInternal _HeartBeatAck_default_instance_;
 class HeartBeatReq;
 class HeartBeatReqDefaultTypeInternal;
 extern HeartBeatReqDefaultTypeInternal _HeartBeatReq_default_instance_;
+class Msg_RidingMountAck;
+class Msg_RidingMountAckDefaultTypeInternal;
+extern Msg_RidingMountAckDefaultTypeInternal _Msg_RidingMountAck_default_instance_;
+class Msg_RidingMountReq;
+class Msg_RidingMountReqDefaultTypeInternal;
+extern Msg_RidingMountReqDefaultTypeInternal _Msg_RidingMountReq_default_instance_;
+class Msg_RoleRebornAck;
+class Msg_RoleRebornAckDefaultTypeInternal;
+extern Msg_RoleRebornAckDefaultTypeInternal _Msg_RoleRebornAck_default_instance_;
+class Msg_RoleRebornReq;
+class Msg_RoleRebornReqDefaultTypeInternal;
+extern Msg_RoleRebornReqDefaultTypeInternal _Msg_RoleRebornReq_default_instance_;
 class NewItem;
 class NewItemDefaultTypeInternal;
 extern NewItemDefaultTypeInternal _NewItem_default_instance_;
@@ -409,6 +433,12 @@ class SkillCastAck : public ::google::protobuf::Message /* @@protoc_insertion_po
 
   // accessors -------------------------------------------------------
 
+  // uint64 ObjectGuid = 2;
+  void clear_objectguid();
+  static const int kObjectGuidFieldNumber = 2;
+  ::google::protobuf::uint64 objectguid() const;
+  void set_objectguid(::google::protobuf::uint64 value);
+
   // uint32 RetCode = 1;
   void clear_retcode();
   static const int kRetCodeFieldNumber = 1;
@@ -419,6 +449,7 @@ class SkillCastAck : public ::google::protobuf::Message /* @@protoc_insertion_po
  private:
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
+  ::google::protobuf::uint64 objectguid_;
   ::google::protobuf::uint32 retcode_;
   mutable int _cached_size_;
   friend struct ::protobuf_Msg_5fMove_2eproto::TableStruct;
@@ -1217,10 +1248,10 @@ class ActionNtyItem : public ::google::protobuf::Message /* @@protoc_insertion_p
 
   // accessors -------------------------------------------------------
 
-  // repeated int32 Equips = 19;
+  // repeated int32 Equips = 18;
   int equips_size() const;
   void clear_equips();
-  static const int kEquipsFieldNumber = 19;
+  static const int kEquipsFieldNumber = 18;
   ::google::protobuf::int32 equips(int index) const;
   void set_equips(int index, ::google::protobuf::int32 value);
   void add_equips(::google::protobuf::int32 value);
@@ -1253,11 +1284,11 @@ class ActionNtyItem : public ::google::protobuf::Message /* @@protoc_insertion_p
   ::google::protobuf::int32 objectstatus() const;
   void set_objectstatus(::google::protobuf::int32 value);
 
-  // int32 BuffStatus = 5;
-  void clear_buffstatus();
-  static const int kBuffStatusFieldNumber = 5;
-  ::google::protobuf::int32 buffstatus() const;
-  void set_buffstatus(::google::protobuf::int32 value);
+  // int32 Speed = 5;
+  void clear_speed();
+  static const int kSpeedFieldNumber = 5;
+  ::google::protobuf::int32 speed() const;
+  void set_speed(::google::protobuf::int32 value);
 
   // float HostX = 6;
   void clear_hostx();
@@ -1331,12 +1362,6 @@ class ActionNtyItem : public ::google::protobuf::Message /* @@protoc_insertion_p
   ::google::protobuf::int32 mpmax() const;
   void set_mpmax(::google::protobuf::int32 value);
 
-  // int32 Speed = 18;
-  void clear_speed();
-  static const int kSpeedFieldNumber = 18;
-  ::google::protobuf::int32 speed() const;
-  void set_speed(::google::protobuf::int32 value);
-
   // @@protoc_insertion_point(class_scope:ActionNtyItem)
  private:
 
@@ -1347,7 +1372,7 @@ class ActionNtyItem : public ::google::protobuf::Message /* @@protoc_insertion_p
   ::google::protobuf::int32 actionid_;
   ::google::protobuf::int32 camp_;
   ::google::protobuf::int32 objectstatus_;
-  ::google::protobuf::int32 buffstatus_;
+  ::google::protobuf::int32 speed_;
   float hostx_;
   float hosty_;
   float hostz_;
@@ -1360,7 +1385,6 @@ class ActionNtyItem : public ::google::protobuf::Message /* @@protoc_insertion_p
   ::google::protobuf::int32 mp_;
   ::google::protobuf::int32 hpmax_;
   ::google::protobuf::int32 mpmax_;
-  ::google::protobuf::int32 speed_;
   mutable int _cached_size_;
   friend struct ::protobuf_Msg_5fMove_2eproto::TableStruct;
   friend void ::protobuf_Msg_5fMove_2eproto::InitDefaultsActionNtyItemImpl();
@@ -1449,10 +1473,10 @@ class NewItem : public ::google::protobuf::Message /* @@protoc_insertion_point(c
 
   // accessors -------------------------------------------------------
 
-  // repeated int32 Equips = 23;
+  // repeated int32 Equips = 22;
   int equips_size() const;
   void clear_equips();
-  static const int kEquipsFieldNumber = 23;
+  static const int kEquipsFieldNumber = 22;
   ::google::protobuf::int32 equips(int index) const;
   void set_equips(int index, ::google::protobuf::int32 value);
   void add_equips(::google::protobuf::int32 value);
@@ -1461,10 +1485,10 @@ class NewItem : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::google::protobuf::RepeatedField< ::google::protobuf::int32 >*
       mutable_equips();
 
-  // repeated .SkillItem Skills = 24;
+  // repeated .SkillItem Skills = 23;
   int skills_size() const;
   void clear_skills();
-  static const int kSkillsFieldNumber = 24;
+  static const int kSkillsFieldNumber = 23;
   const ::SkillItem& skills(int index) const;
   ::SkillItem* mutable_skills(int index);
   ::SkillItem* add_skills();
@@ -1473,9 +1497,9 @@ class NewItem : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   const ::google::protobuf::RepeatedPtrField< ::SkillItem >&
       skills() const;
 
-  // string Name = 9;
+  // string Name = 8;
   void clear_name();
-  static const int kNameFieldNumber = 9;
+  static const int kNameFieldNumber = 8;
   const ::std::string& name() const;
   void set_name(const ::std::string& value);
   #if LANG_CXX11
@@ -1511,35 +1535,35 @@ class NewItem : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::google::protobuf::int32 objectstatus() const;
   void set_objectstatus(::google::protobuf::int32 value);
 
-  // int32 BuffStatus = 5;
-  void clear_buffstatus();
-  static const int kBuffStatusFieldNumber = 5;
-  ::google::protobuf::int32 buffstatus() const;
-  void set_buffstatus(::google::protobuf::int32 value);
-
-  // int32 ActorID = 6;
+  // int32 ActorID = 5;
   void clear_actorid();
-  static const int kActorIDFieldNumber = 6;
+  static const int kActorIDFieldNumber = 5;
   ::google::protobuf::int32 actorid() const;
   void set_actorid(::google::protobuf::int32 value);
 
-  // int32 MountID = 7;
+  // int32 MountID = 6;
   void clear_mountid();
-  static const int kMountIDFieldNumber = 7;
+  static const int kMountIDFieldNumber = 6;
   ::google::protobuf::int32 mountid() const;
   void set_mountid(::google::protobuf::int32 value);
 
-  // int32 Camp = 8;
+  // int32 Camp = 7;
   void clear_camp();
-  static const int kCampFieldNumber = 8;
+  static const int kCampFieldNumber = 7;
   ::google::protobuf::int32 camp() const;
   void set_camp(::google::protobuf::int32 value);
 
-  // int32 Level = 10;
+  // int32 Level = 9;
   void clear_level();
-  static const int kLevelFieldNumber = 10;
+  static const int kLevelFieldNumber = 9;
   ::google::protobuf::int32 level() const;
   void set_level(::google::protobuf::int32 value);
+
+  // int32 Speed = 10;
+  void clear_speed();
+  static const int kSpeedFieldNumber = 10;
+  ::google::protobuf::int32 speed() const;
+  void set_speed(::google::protobuf::int32 value);
 
   // uint64 HostGuid = 11;
   void clear_hostguid();
@@ -1607,12 +1631,6 @@ class NewItem : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::google::protobuf::int32 mpmax() const;
   void set_mpmax(::google::protobuf::int32 value);
 
-  // int32 Speed = 22;
-  void clear_speed();
-  static const int kSpeedFieldNumber = 22;
-  ::google::protobuf::int32 speed() const;
-  void set_speed(::google::protobuf::int32 value);
-
   // @@protoc_insertion_point(class_scope:NewItem)
  private:
 
@@ -1625,11 +1643,11 @@ class NewItem : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::google::protobuf::int32 actionid_;
   ::google::protobuf::int32 objtype_;
   ::google::protobuf::int32 objectstatus_;
-  ::google::protobuf::int32 buffstatus_;
   ::google::protobuf::int32 actorid_;
   ::google::protobuf::int32 mountid_;
   ::google::protobuf::int32 camp_;
   ::google::protobuf::int32 level_;
+  ::google::protobuf::int32 speed_;
   ::google::protobuf::uint64 hostguid_;
   ::google::protobuf::uint64 controlerid_;
   ::google::protobuf::uint64 summonid_;
@@ -1641,7 +1659,6 @@ class NewItem : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::google::protobuf::int32 mp_;
   ::google::protobuf::int32 hpmax_;
   ::google::protobuf::int32 mpmax_;
-  ::google::protobuf::int32 speed_;
   mutable int _cached_size_;
   friend struct ::protobuf_Msg_5fMove_2eproto::TableStruct;
   friend void ::protobuf_Msg_5fMove_2eproto::InitDefaultsNewItemImpl();
@@ -2442,6 +2459,409 @@ class ObjectDieNotify : public ::google::protobuf::Message /* @@protoc_insertion
   friend struct ::protobuf_Msg_5fMove_2eproto::TableStruct;
   friend void ::protobuf_Msg_5fMove_2eproto::InitDefaultsObjectDieNotifyImpl();
 };
+// -------------------------------------------------------------------
+
+class Msg_RidingMountReq : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:Msg_RidingMountReq) */ {
+ public:
+  Msg_RidingMountReq();
+  virtual ~Msg_RidingMountReq();
+
+  Msg_RidingMountReq(const Msg_RidingMountReq& from);
+
+  inline Msg_RidingMountReq& operator=(const Msg_RidingMountReq& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  #if LANG_CXX11
+  Msg_RidingMountReq(Msg_RidingMountReq&& from) noexcept
+    : Msg_RidingMountReq() {
+    *this = ::std::move(from);
+  }
+
+  inline Msg_RidingMountReq& operator=(Msg_RidingMountReq&& from) noexcept {
+    if (GetArenaNoVirtual() == from.GetArenaNoVirtual()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+  #endif
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const Msg_RidingMountReq& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const Msg_RidingMountReq* internal_default_instance() {
+    return reinterpret_cast<const Msg_RidingMountReq*>(
+               &_Msg_RidingMountReq_default_instance_);
+  }
+  static PROTOBUF_CONSTEXPR int const kIndexInFileMessages =
+    17;
+
+  void Swap(Msg_RidingMountReq* other);
+  friend void swap(Msg_RidingMountReq& a, Msg_RidingMountReq& b) {
+    a.Swap(&b);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline Msg_RidingMountReq* New() const PROTOBUF_FINAL { return New(NULL); }
+
+  Msg_RidingMountReq* New(::google::protobuf::Arena* arena) const PROTOBUF_FINAL;
+  void CopyFrom(const ::google::protobuf::Message& from) PROTOBUF_FINAL;
+  void MergeFrom(const ::google::protobuf::Message& from) PROTOBUF_FINAL;
+  void CopyFrom(const Msg_RidingMountReq& from);
+  void MergeFrom(const Msg_RidingMountReq& from);
+  void Clear() PROTOBUF_FINAL;
+  bool IsInitialized() const PROTOBUF_FINAL;
+
+  size_t ByteSizeLong() const PROTOBUF_FINAL;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input) PROTOBUF_FINAL;
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const PROTOBUF_FINAL;
+  ::google::protobuf::uint8* InternalSerializeWithCachedSizesToArray(
+      bool deterministic, ::google::protobuf::uint8* target) const PROTOBUF_FINAL;
+  int GetCachedSize() const PROTOBUF_FINAL { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const PROTOBUF_FINAL;
+  void InternalSwap(Msg_RidingMountReq* other);
+  private:
+  inline ::google::protobuf::Arena* GetArenaNoVirtual() const {
+    return NULL;
+  }
+  inline void* MaybeArenaPtr() const {
+    return NULL;
+  }
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const PROTOBUF_FINAL;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // uint64 ObjectGuid = 1;
+  void clear_objectguid();
+  static const int kObjectGuidFieldNumber = 1;
+  ::google::protobuf::uint64 objectguid() const;
+  void set_objectguid(::google::protobuf::uint64 value);
+
+  // @@protoc_insertion_point(class_scope:Msg_RidingMountReq)
+ private:
+
+  ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
+  ::google::protobuf::uint64 objectguid_;
+  mutable int _cached_size_;
+  friend struct ::protobuf_Msg_5fMove_2eproto::TableStruct;
+  friend void ::protobuf_Msg_5fMove_2eproto::InitDefaultsMsg_RidingMountReqImpl();
+};
+// -------------------------------------------------------------------
+
+class Msg_RidingMountAck : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:Msg_RidingMountAck) */ {
+ public:
+  Msg_RidingMountAck();
+  virtual ~Msg_RidingMountAck();
+
+  Msg_RidingMountAck(const Msg_RidingMountAck& from);
+
+  inline Msg_RidingMountAck& operator=(const Msg_RidingMountAck& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  #if LANG_CXX11
+  Msg_RidingMountAck(Msg_RidingMountAck&& from) noexcept
+    : Msg_RidingMountAck() {
+    *this = ::std::move(from);
+  }
+
+  inline Msg_RidingMountAck& operator=(Msg_RidingMountAck&& from) noexcept {
+    if (GetArenaNoVirtual() == from.GetArenaNoVirtual()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+  #endif
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const Msg_RidingMountAck& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const Msg_RidingMountAck* internal_default_instance() {
+    return reinterpret_cast<const Msg_RidingMountAck*>(
+               &_Msg_RidingMountAck_default_instance_);
+  }
+  static PROTOBUF_CONSTEXPR int const kIndexInFileMessages =
+    18;
+
+  void Swap(Msg_RidingMountAck* other);
+  friend void swap(Msg_RidingMountAck& a, Msg_RidingMountAck& b) {
+    a.Swap(&b);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline Msg_RidingMountAck* New() const PROTOBUF_FINAL { return New(NULL); }
+
+  Msg_RidingMountAck* New(::google::protobuf::Arena* arena) const PROTOBUF_FINAL;
+  void CopyFrom(const ::google::protobuf::Message& from) PROTOBUF_FINAL;
+  void MergeFrom(const ::google::protobuf::Message& from) PROTOBUF_FINAL;
+  void CopyFrom(const Msg_RidingMountAck& from);
+  void MergeFrom(const Msg_RidingMountAck& from);
+  void Clear() PROTOBUF_FINAL;
+  bool IsInitialized() const PROTOBUF_FINAL;
+
+  size_t ByteSizeLong() const PROTOBUF_FINAL;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input) PROTOBUF_FINAL;
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const PROTOBUF_FINAL;
+  ::google::protobuf::uint8* InternalSerializeWithCachedSizesToArray(
+      bool deterministic, ::google::protobuf::uint8* target) const PROTOBUF_FINAL;
+  int GetCachedSize() const PROTOBUF_FINAL { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const PROTOBUF_FINAL;
+  void InternalSwap(Msg_RidingMountAck* other);
+  private:
+  inline ::google::protobuf::Arena* GetArenaNoVirtual() const {
+    return NULL;
+  }
+  inline void* MaybeArenaPtr() const {
+    return NULL;
+  }
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const PROTOBUF_FINAL;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // uint32 RetCode = 1;
+  void clear_retcode();
+  static const int kRetCodeFieldNumber = 1;
+  ::google::protobuf::uint32 retcode() const;
+  void set_retcode(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:Msg_RidingMountAck)
+ private:
+
+  ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
+  ::google::protobuf::uint32 retcode_;
+  mutable int _cached_size_;
+  friend struct ::protobuf_Msg_5fMove_2eproto::TableStruct;
+  friend void ::protobuf_Msg_5fMove_2eproto::InitDefaultsMsg_RidingMountAckImpl();
+};
+// -------------------------------------------------------------------
+
+class Msg_RoleRebornReq : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:Msg_RoleRebornReq) */ {
+ public:
+  Msg_RoleRebornReq();
+  virtual ~Msg_RoleRebornReq();
+
+  Msg_RoleRebornReq(const Msg_RoleRebornReq& from);
+
+  inline Msg_RoleRebornReq& operator=(const Msg_RoleRebornReq& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  #if LANG_CXX11
+  Msg_RoleRebornReq(Msg_RoleRebornReq&& from) noexcept
+    : Msg_RoleRebornReq() {
+    *this = ::std::move(from);
+  }
+
+  inline Msg_RoleRebornReq& operator=(Msg_RoleRebornReq&& from) noexcept {
+    if (GetArenaNoVirtual() == from.GetArenaNoVirtual()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+  #endif
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const Msg_RoleRebornReq& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const Msg_RoleRebornReq* internal_default_instance() {
+    return reinterpret_cast<const Msg_RoleRebornReq*>(
+               &_Msg_RoleRebornReq_default_instance_);
+  }
+  static PROTOBUF_CONSTEXPR int const kIndexInFileMessages =
+    19;
+
+  void Swap(Msg_RoleRebornReq* other);
+  friend void swap(Msg_RoleRebornReq& a, Msg_RoleRebornReq& b) {
+    a.Swap(&b);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline Msg_RoleRebornReq* New() const PROTOBUF_FINAL { return New(NULL); }
+
+  Msg_RoleRebornReq* New(::google::protobuf::Arena* arena) const PROTOBUF_FINAL;
+  void CopyFrom(const ::google::protobuf::Message& from) PROTOBUF_FINAL;
+  void MergeFrom(const ::google::protobuf::Message& from) PROTOBUF_FINAL;
+  void CopyFrom(const Msg_RoleRebornReq& from);
+  void MergeFrom(const Msg_RoleRebornReq& from);
+  void Clear() PROTOBUF_FINAL;
+  bool IsInitialized() const PROTOBUF_FINAL;
+
+  size_t ByteSizeLong() const PROTOBUF_FINAL;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input) PROTOBUF_FINAL;
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const PROTOBUF_FINAL;
+  ::google::protobuf::uint8* InternalSerializeWithCachedSizesToArray(
+      bool deterministic, ::google::protobuf::uint8* target) const PROTOBUF_FINAL;
+  int GetCachedSize() const PROTOBUF_FINAL { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const PROTOBUF_FINAL;
+  void InternalSwap(Msg_RoleRebornReq* other);
+  private:
+  inline ::google::protobuf::Arena* GetArenaNoVirtual() const {
+    return NULL;
+  }
+  inline void* MaybeArenaPtr() const {
+    return NULL;
+  }
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const PROTOBUF_FINAL;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // uint64 ObjectGuid = 1;
+  void clear_objectguid();
+  static const int kObjectGuidFieldNumber = 1;
+  ::google::protobuf::uint64 objectguid() const;
+  void set_objectguid(::google::protobuf::uint64 value);
+
+  // int32 RebornType = 2;
+  void clear_reborntype();
+  static const int kRebornTypeFieldNumber = 2;
+  ::google::protobuf::int32 reborntype() const;
+  void set_reborntype(::google::protobuf::int32 value);
+
+  // @@protoc_insertion_point(class_scope:Msg_RoleRebornReq)
+ private:
+
+  ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
+  ::google::protobuf::uint64 objectguid_;
+  ::google::protobuf::int32 reborntype_;
+  mutable int _cached_size_;
+  friend struct ::protobuf_Msg_5fMove_2eproto::TableStruct;
+  friend void ::protobuf_Msg_5fMove_2eproto::InitDefaultsMsg_RoleRebornReqImpl();
+};
+// -------------------------------------------------------------------
+
+class Msg_RoleRebornAck : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:Msg_RoleRebornAck) */ {
+ public:
+  Msg_RoleRebornAck();
+  virtual ~Msg_RoleRebornAck();
+
+  Msg_RoleRebornAck(const Msg_RoleRebornAck& from);
+
+  inline Msg_RoleRebornAck& operator=(const Msg_RoleRebornAck& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  #if LANG_CXX11
+  Msg_RoleRebornAck(Msg_RoleRebornAck&& from) noexcept
+    : Msg_RoleRebornAck() {
+    *this = ::std::move(from);
+  }
+
+  inline Msg_RoleRebornAck& operator=(Msg_RoleRebornAck&& from) noexcept {
+    if (GetArenaNoVirtual() == from.GetArenaNoVirtual()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+  #endif
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const Msg_RoleRebornAck& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const Msg_RoleRebornAck* internal_default_instance() {
+    return reinterpret_cast<const Msg_RoleRebornAck*>(
+               &_Msg_RoleRebornAck_default_instance_);
+  }
+  static PROTOBUF_CONSTEXPR int const kIndexInFileMessages =
+    20;
+
+  void Swap(Msg_RoleRebornAck* other);
+  friend void swap(Msg_RoleRebornAck& a, Msg_RoleRebornAck& b) {
+    a.Swap(&b);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline Msg_RoleRebornAck* New() const PROTOBUF_FINAL { return New(NULL); }
+
+  Msg_RoleRebornAck* New(::google::protobuf::Arena* arena) const PROTOBUF_FINAL;
+  void CopyFrom(const ::google::protobuf::Message& from) PROTOBUF_FINAL;
+  void MergeFrom(const ::google::protobuf::Message& from) PROTOBUF_FINAL;
+  void CopyFrom(const Msg_RoleRebornAck& from);
+  void MergeFrom(const Msg_RoleRebornAck& from);
+  void Clear() PROTOBUF_FINAL;
+  bool IsInitialized() const PROTOBUF_FINAL;
+
+  size_t ByteSizeLong() const PROTOBUF_FINAL;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input) PROTOBUF_FINAL;
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const PROTOBUF_FINAL;
+  ::google::protobuf::uint8* InternalSerializeWithCachedSizesToArray(
+      bool deterministic, ::google::protobuf::uint8* target) const PROTOBUF_FINAL;
+  int GetCachedSize() const PROTOBUF_FINAL { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const PROTOBUF_FINAL;
+  void InternalSwap(Msg_RoleRebornAck* other);
+  private:
+  inline ::google::protobuf::Arena* GetArenaNoVirtual() const {
+    return NULL;
+  }
+  inline void* MaybeArenaPtr() const {
+    return NULL;
+  }
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const PROTOBUF_FINAL;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // uint32 RetCode = 1;
+  void clear_retcode();
+  static const int kRetCodeFieldNumber = 1;
+  ::google::protobuf::uint32 retcode() const;
+  void set_retcode(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:Msg_RoleRebornAck)
+ private:
+
+  ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
+  ::google::protobuf::uint32 retcode_;
+  mutable int _cached_size_;
+  friend struct ::protobuf_Msg_5fMove_2eproto::TableStruct;
+  friend void ::protobuf_Msg_5fMove_2eproto::InitDefaultsMsg_RoleRebornAckImpl();
+};
 // ===================================================================
 
 
@@ -2639,6 +3059,20 @@ inline void SkillCastAck::set_retcode(::google::protobuf::uint32 value) {
   
   retcode_ = value;
   // @@protoc_insertion_point(field_set:SkillCastAck.RetCode)
+}
+
+// uint64 ObjectGuid = 2;
+inline void SkillCastAck::clear_objectguid() {
+  objectguid_ = GOOGLE_ULONGLONG(0);
+}
+inline ::google::protobuf::uint64 SkillCastAck::objectguid() const {
+  // @@protoc_insertion_point(field_get:SkillCastAck.ObjectGuid)
+  return objectguid_;
+}
+inline void SkillCastAck::set_objectguid(::google::protobuf::uint64 value) {
+  
+  objectguid_ = value;
+  // @@protoc_insertion_point(field_set:SkillCastAck.ObjectGuid)
 }
 
 // -------------------------------------------------------------------
@@ -3055,18 +3489,18 @@ inline void ActionNtyItem::set_objectstatus(::google::protobuf::int32 value) {
   // @@protoc_insertion_point(field_set:ActionNtyItem.ObjectStatus)
 }
 
-// int32 BuffStatus = 5;
-inline void ActionNtyItem::clear_buffstatus() {
-  buffstatus_ = 0;
+// int32 Speed = 5;
+inline void ActionNtyItem::clear_speed() {
+  speed_ = 0;
 }
-inline ::google::protobuf::int32 ActionNtyItem::buffstatus() const {
-  // @@protoc_insertion_point(field_get:ActionNtyItem.BuffStatus)
-  return buffstatus_;
+inline ::google::protobuf::int32 ActionNtyItem::speed() const {
+  // @@protoc_insertion_point(field_get:ActionNtyItem.Speed)
+  return speed_;
 }
-inline void ActionNtyItem::set_buffstatus(::google::protobuf::int32 value) {
+inline void ActionNtyItem::set_speed(::google::protobuf::int32 value) {
   
-  buffstatus_ = value;
-  // @@protoc_insertion_point(field_set:ActionNtyItem.BuffStatus)
+  speed_ = value;
+  // @@protoc_insertion_point(field_set:ActionNtyItem.Speed)
 }
 
 // float HostX = 6;
@@ -3237,21 +3671,7 @@ inline void ActionNtyItem::set_mpmax(::google::protobuf::int32 value) {
   // @@protoc_insertion_point(field_set:ActionNtyItem.MpMax)
 }
 
-// int32 Speed = 18;
-inline void ActionNtyItem::clear_speed() {
-  speed_ = 0;
-}
-inline ::google::protobuf::int32 ActionNtyItem::speed() const {
-  // @@protoc_insertion_point(field_get:ActionNtyItem.Speed)
-  return speed_;
-}
-inline void ActionNtyItem::set_speed(::google::protobuf::int32 value) {
-  
-  speed_ = value;
-  // @@protoc_insertion_point(field_set:ActionNtyItem.Speed)
-}
-
-// repeated int32 Equips = 19;
+// repeated int32 Equips = 18;
 inline int ActionNtyItem::equips_size() const {
   return equips_.size();
 }
@@ -3341,21 +3761,7 @@ inline void NewItem::set_objectstatus(::google::protobuf::int32 value) {
   // @@protoc_insertion_point(field_set:NewItem.ObjectStatus)
 }
 
-// int32 BuffStatus = 5;
-inline void NewItem::clear_buffstatus() {
-  buffstatus_ = 0;
-}
-inline ::google::protobuf::int32 NewItem::buffstatus() const {
-  // @@protoc_insertion_point(field_get:NewItem.BuffStatus)
-  return buffstatus_;
-}
-inline void NewItem::set_buffstatus(::google::protobuf::int32 value) {
-  
-  buffstatus_ = value;
-  // @@protoc_insertion_point(field_set:NewItem.BuffStatus)
-}
-
-// int32 ActorID = 6;
+// int32 ActorID = 5;
 inline void NewItem::clear_actorid() {
   actorid_ = 0;
 }
@@ -3369,7 +3775,7 @@ inline void NewItem::set_actorid(::google::protobuf::int32 value) {
   // @@protoc_insertion_point(field_set:NewItem.ActorID)
 }
 
-// int32 MountID = 7;
+// int32 MountID = 6;
 inline void NewItem::clear_mountid() {
   mountid_ = 0;
 }
@@ -3383,7 +3789,7 @@ inline void NewItem::set_mountid(::google::protobuf::int32 value) {
   // @@protoc_insertion_point(field_set:NewItem.MountID)
 }
 
-// int32 Camp = 8;
+// int32 Camp = 7;
 inline void NewItem::clear_camp() {
   camp_ = 0;
 }
@@ -3397,7 +3803,7 @@ inline void NewItem::set_camp(::google::protobuf::int32 value) {
   // @@protoc_insertion_point(field_set:NewItem.Camp)
 }
 
-// string Name = 9;
+// string Name = 8;
 inline void NewItem::clear_name() {
   name_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
@@ -3450,7 +3856,7 @@ inline void NewItem::set_allocated_name(::std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:NewItem.Name)
 }
 
-// int32 Level = 10;
+// int32 Level = 9;
 inline void NewItem::clear_level() {
   level_ = 0;
 }
@@ -3462,6 +3868,20 @@ inline void NewItem::set_level(::google::protobuf::int32 value) {
   
   level_ = value;
   // @@protoc_insertion_point(field_set:NewItem.Level)
+}
+
+// int32 Speed = 10;
+inline void NewItem::clear_speed() {
+  speed_ = 0;
+}
+inline ::google::protobuf::int32 NewItem::speed() const {
+  // @@protoc_insertion_point(field_get:NewItem.Speed)
+  return speed_;
+}
+inline void NewItem::set_speed(::google::protobuf::int32 value) {
+  
+  speed_ = value;
+  // @@protoc_insertion_point(field_set:NewItem.Speed)
 }
 
 // uint64 HostGuid = 11;
@@ -3618,21 +4038,7 @@ inline void NewItem::set_mpmax(::google::protobuf::int32 value) {
   // @@protoc_insertion_point(field_set:NewItem.MpMax)
 }
 
-// int32 Speed = 22;
-inline void NewItem::clear_speed() {
-  speed_ = 0;
-}
-inline ::google::protobuf::int32 NewItem::speed() const {
-  // @@protoc_insertion_point(field_get:NewItem.Speed)
-  return speed_;
-}
-inline void NewItem::set_speed(::google::protobuf::int32 value) {
-  
-  speed_ = value;
-  // @@protoc_insertion_point(field_set:NewItem.Speed)
-}
-
-// repeated int32 Equips = 23;
+// repeated int32 Equips = 22;
 inline int NewItem::equips_size() const {
   return equips_.size();
 }
@@ -3662,7 +4068,7 @@ NewItem::mutable_equips() {
   return &equips_;
 }
 
-// repeated .SkillItem Skills = 24;
+// repeated .SkillItem Skills = 23;
 inline int NewItem::skills_size() const {
   return skills_.size();
 }
@@ -4034,9 +4440,103 @@ inline void ObjectDieNotify::set_objectguid(::google::protobuf::uint64 value) {
   // @@protoc_insertion_point(field_set:ObjectDieNotify.ObjectGuid)
 }
 
+// -------------------------------------------------------------------
+
+// Msg_RidingMountReq
+
+// uint64 ObjectGuid = 1;
+inline void Msg_RidingMountReq::clear_objectguid() {
+  objectguid_ = GOOGLE_ULONGLONG(0);
+}
+inline ::google::protobuf::uint64 Msg_RidingMountReq::objectguid() const {
+  // @@protoc_insertion_point(field_get:Msg_RidingMountReq.ObjectGuid)
+  return objectguid_;
+}
+inline void Msg_RidingMountReq::set_objectguid(::google::protobuf::uint64 value) {
+  
+  objectguid_ = value;
+  // @@protoc_insertion_point(field_set:Msg_RidingMountReq.ObjectGuid)
+}
+
+// -------------------------------------------------------------------
+
+// Msg_RidingMountAck
+
+// uint32 RetCode = 1;
+inline void Msg_RidingMountAck::clear_retcode() {
+  retcode_ = 0u;
+}
+inline ::google::protobuf::uint32 Msg_RidingMountAck::retcode() const {
+  // @@protoc_insertion_point(field_get:Msg_RidingMountAck.RetCode)
+  return retcode_;
+}
+inline void Msg_RidingMountAck::set_retcode(::google::protobuf::uint32 value) {
+  
+  retcode_ = value;
+  // @@protoc_insertion_point(field_set:Msg_RidingMountAck.RetCode)
+}
+
+// -------------------------------------------------------------------
+
+// Msg_RoleRebornReq
+
+// uint64 ObjectGuid = 1;
+inline void Msg_RoleRebornReq::clear_objectguid() {
+  objectguid_ = GOOGLE_ULONGLONG(0);
+}
+inline ::google::protobuf::uint64 Msg_RoleRebornReq::objectguid() const {
+  // @@protoc_insertion_point(field_get:Msg_RoleRebornReq.ObjectGuid)
+  return objectguid_;
+}
+inline void Msg_RoleRebornReq::set_objectguid(::google::protobuf::uint64 value) {
+  
+  objectguid_ = value;
+  // @@protoc_insertion_point(field_set:Msg_RoleRebornReq.ObjectGuid)
+}
+
+// int32 RebornType = 2;
+inline void Msg_RoleRebornReq::clear_reborntype() {
+  reborntype_ = 0;
+}
+inline ::google::protobuf::int32 Msg_RoleRebornReq::reborntype() const {
+  // @@protoc_insertion_point(field_get:Msg_RoleRebornReq.RebornType)
+  return reborntype_;
+}
+inline void Msg_RoleRebornReq::set_reborntype(::google::protobuf::int32 value) {
+  
+  reborntype_ = value;
+  // @@protoc_insertion_point(field_set:Msg_RoleRebornReq.RebornType)
+}
+
+// -------------------------------------------------------------------
+
+// Msg_RoleRebornAck
+
+// uint32 RetCode = 1;
+inline void Msg_RoleRebornAck::clear_retcode() {
+  retcode_ = 0u;
+}
+inline ::google::protobuf::uint32 Msg_RoleRebornAck::retcode() const {
+  // @@protoc_insertion_point(field_get:Msg_RoleRebornAck.RetCode)
+  return retcode_;
+}
+inline void Msg_RoleRebornAck::set_retcode(::google::protobuf::uint32 value) {
+  
+  retcode_ = value;
+  // @@protoc_insertion_point(field_set:Msg_RoleRebornAck.RetCode)
+}
+
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

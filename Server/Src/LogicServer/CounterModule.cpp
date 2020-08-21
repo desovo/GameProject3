@@ -1,11 +1,13 @@
 ﻿#include "stdafx.h"
 #include "DataPool.h"
 #include "GlobalDataMgr.h"
+#include "CounterID.h"
 #include "CounterModule.h"
+#include "PlayerObject.h"
 
 CCounterModule::CCounterModule(CPlayerObject* pOwner): CModuleBase(pOwner)
 {
-
+	RegisterMessageHanler();
 }
 
 CCounterModule::~CCounterModule()
@@ -24,12 +26,9 @@ BOOL CCounterModule::OnDestroy()
 {
 	for(auto itor = m_mapCounterData.begin(); itor != m_mapCounterData.end(); itor++)
 	{
-		std::vector<CounterDataObject*>& vtObject = itor->second;
+		CounterDataObject* pObject = itor->second;
 
-		for(auto vtitor = vtObject.begin(); vtitor != vtObject.end(); vtitor++)
-		{
-			(*vtitor)->Release();
-		}
+		pObject->Release();
 	}
 
 	m_mapCounterData.clear();
@@ -52,9 +51,8 @@ BOOL CCounterModule::OnNewDay()
 	return TRUE;
 }
 
-BOOL CCounterModule::DispatchPacket(NetPacket* pNetPacket)
+VOID CCounterModule::RegisterMessageHanler()
 {
-	return FALSE;
 }
 
 BOOL CCounterModule::ReadFromDBLoginData(DBRoleLoginAck& Ack)
@@ -64,9 +62,14 @@ BOOL CCounterModule::ReadFromDBLoginData(DBRoleLoginAck& Ack)
 	{
 		const DBCounterItem& CounterItem = CounterData.counterlist(i);
 		CounterDataObject* pObject = DataPool::CreateObject<CounterDataObject>(ESD_COUNTER, FALSE);
-
-
-		//m_mapCounterData.insert(std::make_pair(pObject->m_uCounterID, pObject));
+		pObject->m_uRoleID = CounterItem.roleid();
+		pObject->m_dwIndex = CounterItem.index();
+		pObject->m_uTime = CounterItem.time();
+		pObject->m_uCounterID = CounterItem.counterid();
+		pObject->m_uValue = CounterItem.value();
+		UINT64 uKey = pObject->m_dwIndex;
+		uKey = uKey << 32 | pObject->m_uCounterID;
+		m_mapCounterData.insert(std::make_pair(uKey, pObject));
 	}
 	return TRUE;
 }
@@ -81,48 +84,96 @@ BOOL CCounterModule::NotifyChange()
 	return TRUE;
 }
 
-CounterDataObject* CCounterModule::GetCounterData(UINT64 uID, UINT32 dwIndex, BOOL bCreate)
+CounterDataObject* CCounterModule::GetCounterData(UINT32 uID, UINT32 dwIndex, BOOL bCreate)
 {
-	auto itor = m_mapCounterData.find(uID);
+	ERROR_RETURN_FALSE(uID > 0);
+	UINT64 uKey = dwIndex;
+	uKey = uKey << 32 | uID;
+	auto itor = m_mapCounterData.find(uKey);
 	if(itor == m_mapCounterData.end())
 	{
-		if(bCreate)
+		if (bCreate)
 		{
 			CounterDataObject* pTempObject = DataPool::CreateObject<CounterDataObject>(ESD_COUNTER, TRUE);
-			std::vector<CounterDataObject*> tempvt;
-			tempvt.push_back(pTempObject);
-			m_mapCounterData.insert(std::make_pair(uID, tempvt));
+			pTempObject->m_uCounterID = uID;
+			pTempObject->m_uRoleID = m_pOwnPlayer->GetRoleID();
+			pTempObject->m_uValue = 0;
+			pTempObject->m_dwIndex = dwIndex;
+			pTempObject->m_uTime = CommonFunc::GetCurrTime();
+			m_mapCounterData.insert(std::make_pair(uKey, pTempObject));
 			return pTempObject;
 		}
 
 		return NULL;
 	}
 
-	if(itor->second.size() > 0)
+	return itor->second;
+}
+
+UINT64 CCounterModule::GetCounterValue(UINT32 uID, UINT32 dwIndex /*= 0*/)
+{
+	ERROR_RETURN_FALSE(uID > 0);
+	CounterDataObject* pTempObject = GetCounterData(uID, dwIndex);
+	if (pTempObject == NULL)
 	{
-		if(dwIndex == 0)
-		{
-			return itor->second.at(0);
-		}
-
-		std::vector<CounterDataObject*>& vtData = itor->second;
-
-		for(std::vector<CounterDataObject*>::size_type i = 0; i < vtData.size(); i++)
-		{
-			if(vtData.at(i)->m_dwIndex == dwIndex)
-			{
-				return vtData.at(i);
-			}
-		}
+		return 0;
 	}
 
-	if(bCreate)
+	return pTempObject->m_uValue;
+}
+
+BOOL CCounterModule::SetCounterValue(UINT32 uID, INT64 uValue, UINT32 dwIndex /*= 0*/)
+{
+	ERROR_RETURN_FALSE(uID > 0);
+	CounterDataObject* pTempObject = GetCounterData(uID, dwIndex, TRUE);
+	ERROR_RETURN_FALSE(pTempObject != NULL);
+
+	pTempObject->Lock();
+	pTempObject->m_uValue = uValue;
+	pTempObject->m_uTime = CommonFunc::GetCurrTime();
+	pTempObject->Unlock();
+
+	return TRUE;
+}
+
+BOOL CCounterModule::AddCounterValue(UINT32 uID, INT64 uValue, UINT32 dwIndex /*= 0*/)
+{
+	ERROR_RETURN_FALSE(uID > 0);
+	CounterDataObject* pTempObject = GetCounterData(uID, dwIndex, TRUE);
+	ERROR_RETURN_FALSE(pTempObject != NULL);
+
+	pTempObject->Lock();
+	pTempObject->m_uValue += uValue;
+	pTempObject->m_uTime = CommonFunc::GetCurrTime();
+	pTempObject->Unlock();
+
+	return TRUE;
+}
+
+BOOL CCounterModule::GetCounterBitValue(UINT32 uID)
+{
+	ERROR_RETURN_FALSE(uID > 0); // uID必须大于0
+
+	CounterDataObject* pCounterObject = GetCounterData(uID / 64 + 1, 0);
+	if (pCounterObject == NULL)
 	{
-		CounterDataObject* pTempObject = DataPool::CreateObject<CounterDataObject>(ESD_COUNTER, TRUE);
-		std::vector<CounterDataObject*> tempvt;
-		itor->second.push_back(pTempObject);
-		return pTempObject;
+		return FALSE;
 	}
 
-	return NULL;
+	return CommonFunc::GetBitValue((UINT64)pCounterObject->m_uValue, uID % 64);
+}
+
+BOOL CCounterModule::SetCounterBitValue(UINT32 uID, BOOL bValue)
+{
+	ERROR_RETURN_FALSE(uID > 0); // uID必须大于0
+
+	CounterDataObject* pCounterObject = GetCounterData(uID / 64 + 1, 0, TRUE);
+	ERROR_RETURN_FALSE(pCounterObject != NULL);
+	pCounterObject->Lock();
+	UINT64 uValue = pCounterObject->m_uValue;
+	CommonFunc::SetBitValue(uValue, uID % 64, bValue);
+	pCounterObject->m_uValue = uValue;
+	pCounterObject->Unlock();
+
+	return TRUE;
 }
